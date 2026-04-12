@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  --color-mare: #0ea5e9;
+  --color-sabbia: #f5f0e8;
+  --color-tramonto: #f97316;
+  --color-corallo: #ef4444;
+  --color-palma: #16a34a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@layer components {
+  .btn-primary {
+    background-color: #0ea5e9;
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 1rem;
+    transition: all 0.15s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    display: inline-block;
+    text-align: center;
+  }
+
+  .btn-primary:hover {
+    background-color: #0284c7;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background-color: white;
+    color: #0ea5e9;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 1rem;
+    border: 2px solid #0ea5e9;
+    transition: all 0.15s;
+    display: inline-block;
+    text-align: center;
+  }
+
+  .card {
+    background-color: white;
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border: 1px solid #f1f5f9;
+    overflow: hidden;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+}
