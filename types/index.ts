@@ -9,6 +9,7 @@ export interface Prodotto {
   immagine_url: string | null;
   disponibile: boolean;
   ordinamento: number;
+  allergeni: string[] | null;
 }
 
 export interface ProdottoCarrello extends Prodotto {

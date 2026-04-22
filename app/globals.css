@@ -1,11 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --color-mare: #0ea5e9;
-  --color-sabbia: #f5f0e8;
-  --color-tramonto: #f97316;
-  --color-corallo: #ef4444;
-  --color-palma: #16a34a;
+  --oro: #c9a84c;
+  --oro-chiaro: #e8c97a;
+  --oro-scuro: #a07830;
+  --nero: #0a0a0a;
+  --nero-soft: #1a1a1a;
+  --bianco: #ffffff;
 }
 
 html {
@@ -21,25 +22,53 @@ input, select, textarea {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes wave {
+  0% { transform: translateY(-100%); }
+  50% { transform: translateY(0%); }
+  100% { transform: translateY(-100%); }
+}
+
+@keyframes waveIn {
+  0% { transform: translateY(-100%); opacity: 1; }
+  60% { transform: translateY(0%); opacity: 1; }
+  100% { transform: translateY(0%); opacity: 1; }
+}
+
+@keyframes waveOut {
+  0% { transform: translateY(0%); opacity: 1; }
+  100% { transform: translateY(100%); opacity: 1; }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
 
+.wave-in {
+  animation: waveIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.wave-out {
+  animation: waveOut 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 @layer components {
   .btn-primary {
-    background-color: #0ea5e9;
-    color: white;
-    font-weight: 600;
+    background-color: #c9a84c;
+    color: #0a0a0a;
+    font-weight: 700;
     padding: 0.75rem 1.5rem;
     border-radius: 1rem;
     transition: all 0.15s;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 15px rgba(201,168,76,0.3);
     display: inline-block;
     text-align: center;
+    border: none;
+    cursor: pointer;
   }
 
   .btn-primary:hover {
-    background-color: #0284c7;
+    background-color: #e8c97a;
+    transform: scale(0.98);
   }
 
   .btn-primary:disabled {
@@ -48,22 +77,35 @@ input, select, textarea {
   }
 
   .btn-secondary {
-    background-color: white;
-    color: #0ea5e9;
-    font-weight: 600;
+    background-color: transparent;
+    color: #c9a84c;
+    font-weight: 700;
     padding: 0.75rem 1.5rem;
     border-radius: 1rem;
-    border: 2px solid #0ea5e9;
+    border: 2px solid #c9a84c;
     transition: all 0.15s;
     display: inline-block;
     text-align: center;
+    cursor: pointer;
+  }
+
+  .btn-secondary:hover {
+    background-color: rgba(201,168,76,0.1);
   }
 
   .card {
     background-color: white;
     border-radius: 1rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    border: 1px solid #f1f5f9;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border: 1px solid #f1f0ee;
+    overflow: hidden;
+  }
+
+  .card-dark {
+    background-color: #1a1a1a;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    border: 1px solid #2a2a2a;
     overflow: hidden;
   }
 
@@ -74,5 +116,13 @@ input, select, textarea {
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 500;
+  }
+
+  .oro-text {
+    color: #c9a84c;
+  }
+
+  .oro-bg {
+    background-color: #c9a84c;
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCarrelloStore } from '@/lib/store';
 
@@ -12,7 +13,10 @@ const LETTINI = [
   'E1','E2','E3','E4','E5','E6',
 ];
 
+const COSTO_CONSEGNA = 0.50;
+
 export default function CartPage() {
+  const searchParams = useSearchParams();
   const {
     items, totale, totaleItems,
     aumentaQty, diminuisciQty,
@@ -23,14 +27,29 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState('');
 
+  // Se il cliente ha annullato il pagamento su Stripe
+  useEffect(() => {
+    const cancelled = searchParams.get('cancelled');
+    if (cancelled === 'true') {
+      fetch('/api/ordini/cancella', { method: 'POST' });
+    }
+  }, [searchParams]);
+
+  const costoConsegna = modalita === 'lettino' ? COSTO_CONSEGNA : 0;
+  const totaleFinale = totale() + costoConsegna;
+
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center"
+        style={{ backgroundColor: '#0a0a0a' }}>
+        <div style={{ height: '54px' }} />
         <div className="text-7xl mb-4">🛒</div>
-        <h2 className="text-2xl font-bold text-gray-700">Carrello vuoto</h2>
-        <p className="text-gray-400 mt-2">Aggiungi qualcosa dal menu!</p>
-        <Link href="/menu" className="btn-primary mt-6 inline-block">
-          Vai al menu
+        <h2 className="text-2xl font-bold" style={{ color: '#c9a84c' }}>Carrello vuoto</h2>
+        <p className="mt-2" style={{ color: '#666' }}>Aggiungi qualcosa dal menu!</p>
+        <Link href="/menu">
+          <button className="btn-primary mt-6 px-8 py-3 rounded-2xl font-bold">
+            Vai al menu
+          </button>
         </Link>
       </div>
     );
@@ -56,11 +75,11 @@ export default function CartPage() {
             qty: i.qty,
             prezzo_unitario: i.prezzo,
           })),
-          totale: totale(),
+          totale: totaleFinale,
           modalita,
         }),
       });
-      if (!ordineRes.ok) throw new Error('Errore nella creazione ordine');
+      if (!ordineRes.ok) throw new Error('Errore ordine');
       const { ordine_id } = await ordineRes.json();
 
       const stripeRes = await fetch('/api/stripe/checkout', {
@@ -69,11 +88,19 @@ export default function CartPage() {
         body: JSON.stringify({
           tipo: 'ordine',
           riferimento_id: ordine_id,
-          items: items.map((i) => ({
-            nome: i.nome,
-            prezzo: i.prezzo,
-            qty: i.qty,
-          })),
+          modalita,
+          items: [
+            ...items.map((i) => ({
+              nome: i.nome,
+              prezzo: i.prezzo,
+              qty: i.qty,
+            })),
+            ...(costoConsegna > 0 ? [{
+              nome: 'Servizio consegna al lettino',
+              prezzo: COSTO_CONSEGNA,
+              qty: 1,
+            }] : []),
+          ],
         }),
       });
       if (!stripeRes.ok) throw new Error('Errore Stripe');
@@ -86,54 +113,65 @@ export default function CartPage() {
   }
 
   return (
-    <div className="animate-fade-in">
-      <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center gap-3">
-        <Link href="/menu" className="text-gray-400 text-2xl">←</Link>
+    <div style={{ backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+      <div style={{ height: '54px' }} />
+
+      {/* Header */}
+      <div className="px-5 py-4 flex items-center gap-3"
+        style={{ borderBottom: '1px solid #2a2a2a' }}>
+        <Link href="/menu">
+          <span style={{ color: '#c9a84c', fontSize: '1.3rem' }}>←</span>
+        </Link>
         <div>
-          <h1 className="text-xl font-black text-gray-800">Il tuo ordine</h1>
-          <p className="text-gray-500 text-sm">{totaleItems()} prodotti selezionati</p>
+          <h1 className="text-xl font-black" style={{ color: '#c9a84c' }}>Il tuo ordine</h1>
+          <p style={{ color: '#666', fontSize: '0.75rem' }}>{totaleItems()} prodotti selezionati</p>
         </div>
       </div>
 
       <div className="px-5 py-4 space-y-4">
-        <div className="card divide-y divide-gray-50">
+
+        {/* Lista prodotti */}
+        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #2a2a2a' }}>
           {items.map((item) => (
-            <div key={item.id} className="p-4 flex items-center gap-3">
+            <div key={item.id} className="p-4 flex items-center gap-3"
+              style={{ borderBottom: '1px solid #1a1a1a', backgroundColor: '#1a1a1a' }}>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 truncate">{item.nome}</p>
-                <p className="text-sky-600 font-medium text-sm">
+                <p className="font-semibold truncate" style={{ color: '#e8e8e8' }}>{item.nome}</p>
+                <p className="text-sm font-bold" style={{ color: '#c9a84c' }}>
                   €{(item.prezzo * item.qty).toFixed(2)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => diminuisciQty(item.id)}
-                  className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-lg font-bold text-gray-600"
-                >
-                  −
-                </button>
-                <span className="w-5 text-center font-bold text-gray-800">{item.qty}</span>
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold"
+                  style={{ backgroundColor: '#2a2a2a', color: '#888' }}
+                >−</button>
+                <span className="w-5 text-center font-bold" style={{ color: '#e8e8e8' }}>{item.qty}</span>
                 <button
                   onClick={() => aumentaQty(item.id)}
-                  className="w-8 h-8 bg-sky-500 rounded-full flex items-center justify-center text-lg font-bold text-white"
-                >
-                  +
-                </button>
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold"
+                  style={{ backgroundColor: '#c9a84c', color: '#0a0a0a' }}
+                >+</button>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="card p-5 space-y-4">
-          <h2 className="font-bold text-gray-800 text-lg">Dettagli ordine</h2>
+        {/* Form */}
+        <div className="rounded-2xl p-5 space-y-4"
+          style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+          <h2 className="font-bold text-lg" style={{ color: '#c9a84c' }}>Dettagli ordine</h2>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Numero lettino <span className="text-red-500">*</span>
+            <label className="block text-sm font-bold mb-1.5" style={{ color: '#888' }}>
+              Numero lettino <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <select
               value={lettino}
               onChange={(e) => setLettino(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+              className="w-full px-4 py-3 rounded-xl font-semibold"
+              style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }}
             >
               <option value="">— Seleziona il tuo lettino —</option>
               {LETTINI.map((l) => (
@@ -141,61 +179,78 @@ export default function CartPage() {
               ))}
             </select>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Nome <span className="text-gray-400 text-xs">(facoltativo)</span>
+            <label className="block text-sm font-bold mb-1.5" style={{ color: '#888' }}>
+              Nome <span style={{ color: '#555', fontSize: '0.75rem' }}>(facoltativo)</span>
             </label>
             <input
               type="text"
               placeholder="Il tuo nome"
               value={nomeCliente}
               onChange={(e) => setNomeCliente(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              className="w-full px-4 py-3 rounded-xl"
+              style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }}
             />
           </div>
+
+          {/* Modalità consegna */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-bold mb-2" style={{ color: '#888' }}>
               Modalità consegna
             </label>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { id: 'lettino', label: 'Al lettino', emoji: '🏖️' },
-                { id: 'bancone', label: 'Al bancone', emoji: '🏪' },
+                { id: 'lettino', label: 'Al lettino', emoji: '🏖️', costo: '+€0.50' },
+                { id: 'bancone', label: 'Al bancone', emoji: '🏪', costo: 'Gratis' },
               ].map((opt) => (
                 <button
                   key={opt.id}
                   onClick={() => setModalita(opt.id as 'lettino' | 'bancone')}
-                  className={`p-3 rounded-xl border-2 text-sm font-semibold transition-all flex flex-col items-center gap-1 ${
-                    modalita === opt.id
-                      ? 'border-sky-500 bg-sky-50 text-sky-700'
-                      : 'border-gray-200 text-gray-600'
-                  }`}
+                  className="p-3 rounded-xl flex flex-col items-center gap-1 transition-all"
+                  style={{
+                    border: modalita === opt.id ? '2px solid #c9a84c' : '2px solid #2a2a2a',
+                    backgroundColor: modalita === opt.id ? 'rgba(201,168,76,0.1)' : '#2a2a2a',
+                  }}
                 >
                   <span className="text-2xl">{opt.emoji}</span>
-                  <span>{opt.label}</span>
+                  <span className="text-sm font-bold" style={{ color: modalita === opt.id ? '#c9a84c' : '#666' }}>
+                    {opt.label}
+                  </span>
+                  <span className="text-xs" style={{ color: modalita === opt.id ? '#c9a84c' : '#555' }}>
+                    {opt.costo}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="card p-5">
-          <div className="flex justify-between items-center text-gray-600 text-sm mb-2">
+        {/* Totale */}
+        <div className="rounded-2xl p-5"
+          style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+          <div className="flex justify-between text-sm mb-2" style={{ color: '#666' }}>
             <span>Subtotale ({totaleItems()} prodotti)</span>
             <span>€{totale().toFixed(2)}</span>
           </div>
-          <div className="flex justify-between items-center text-gray-600 text-sm mb-3">
-            <span>Servizio al lettino</span>
-            <span className="text-green-600">Gratis</span>
+          <div className="flex justify-between text-sm mb-3" style={{ color: '#666' }}>
+            <span>Consegna</span>
+            <span style={{ color: costoConsegna === 0 ? '#16a34a' : '#c9a84c' }}>
+              {costoConsegna === 0 ? 'Gratis' : `€${costoConsegna.toFixed(2)}`}
+            </span>
           </div>
-          <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-            <span className="text-lg font-bold text-gray-800">Totale</span>
-            <span className="text-2xl font-black text-sky-600">€{totale().toFixed(2)}</span>
+          <div className="flex justify-between items-center pt-3"
+            style={{ borderTop: '1px solid #2a2a2a' }}>
+            <span className="text-lg font-bold" style={{ color: '#e8e8e8' }}>Totale</span>
+            <span className="text-2xl font-black" style={{ color: '#c9a84c' }}>
+              €{totaleFinale.toFixed(2)}
+            </span>
           </div>
         </div>
 
         {errore && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm text-center">
+          <div className="p-3 rounded-xl text-sm text-center"
+            style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
             ⚠️ {errore}
           </div>
         )}
@@ -203,22 +258,24 @@ export default function CartPage() {
         <button
           onClick={handleCheckout}
           disabled={loading}
-          className="w-full btn-primary text-lg py-4 flex items-center justify-center gap-2"
+          className="w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+          style={{
+            backgroundColor: loading ? '#666' : '#c9a84c',
+            color: '#0a0a0a',
+            opacity: loading ? 0.7 : 1,
+          }}
         >
           {loading ? (
             <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
               <span>Preparazione pagamento...</span>
             </>
           ) : (
-            <>
-              <span>🔒</span>
-              <span>Paga €{totale().toFixed(2)}</span>
-            </>
+            <>🔒 Paga €{totaleFinale.toFixed(2)}</>
           )}
         </button>
 
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-xs" style={{ color: '#444' }}>
           Pagamento sicuro con Stripe.
         </p>
       </div>

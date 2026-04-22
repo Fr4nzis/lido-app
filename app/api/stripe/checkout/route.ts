@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -8,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { tipo, riferimento_id, items } = body;
+    const { tipo, riferimento_id, items, modalita } = body;
 
     if (!tipo || !riferimento_id || !items?.length) {
       return NextResponse.json({ error: 'Dati mancanti' }, { status: 400 });
@@ -32,15 +33,16 @@ export async function POST(req: NextRequest) {
       line_items,
       mode: 'payment',
       locale: 'it',
-      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}&tipo=${tipo}`,
-      cancel_url: tipo === 'ordine' ? `${appUrl}/cart` : `${appUrl}/prenota`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}&tipo=${tipo}&modalita=${modalita ?? 'lettino'}`,
+      cancel_url: tipo === 'ordine'
+        ? `${appUrl}/cart?cancelled=true`
+        : `${appUrl}/prenota`,
       metadata: {
         tipo,
         riferimento_id,
       },
     });
 
-    const { getSupabaseAdmin } = await import('@/lib/supabase');
     const supabase = getSupabaseAdmin();
     const tableName = tipo === 'ordine' ? 'ordini' : 'prenotazioni';
 

@@ -8,6 +8,7 @@ import { useCarrelloStore } from '@/lib/store';
 export default function SuccessPage() {
   const searchParams = useSearchParams();
   const tipo = searchParams.get('tipo');
+  const modalita = searchParams.get('modalita');
   const { svuota } = useCarrelloStore();
   const [contatore, setContatore] = useState(5);
 
@@ -22,56 +23,102 @@ export default function SuccessPage() {
   }, [contatore]);
 
   const isOrdine = tipo === 'ordine';
+  const isLettino = modalita === 'lettino';
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-white">
-      <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+      style={{ backgroundColor: '#0a0a0a' }}>
+
+      {/* Logo */}
+      <div className="mb-6">
+        <img
+          src="/Logo_del_Lido_Arcobaleno.png"
+          alt="Lido Arcobaleno Gate 1"
+          style={{ width: '140px', objectFit: 'contain' }}
+        />
+      </div>
+
+      {/* Icona successo */}
+      <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
+        style={{ backgroundColor: 'rgba(22,163,74,0.15)', border: '2px solid rgba(22,163,74,0.3)' }}>
         <span className="text-5xl">✅</span>
       </div>
 
-      <h1 className="text-3xl font-black text-gray-800 mb-2">
+      <h1 className="text-3xl font-black mb-2" style={{ color: '#c9a84c' }}>
         {isOrdine ? 'Ordine confermato!' : 'Prenotazione confermata!'}
       </h1>
 
-      <p className="text-gray-500 text-lg mb-6 max-w-xs">
+      <p className="text-lg mb-6 max-w-xs" style={{ color: '#888' }}>
         {isOrdine
-          ? 'Il tuo ordine è in preparazione. Ti raggiungiamo al lettino!'
-          : 'Il tuo ombrellone è prenotato. Ti aspettiamo!'}
+          ? isLettino
+            ? 'Il tuo ordine è in preparazione. Ti raggiungiamo presto al lettino!'
+            : 'Il tuo ordine è in preparazione. Puoi ritirarlo al bancone quando vuoi!'
+          : 'Il tuo ombrellone è prenotato. Ti aspettiamo!'
+        }
       </p>
 
-      <div className={`rounded-2xl p-5 mb-8 w-full max-w-sm ${
-        isOrdine ? 'bg-amber-50 border border-amber-200' : 'bg-sky-50 border border-sky-200'
-      }`}>
+      {/* Box info */}
+      <div className="rounded-2xl p-5 mb-8 w-full max-w-sm"
+        style={{ backgroundColor: '#1a1a1a', border: '1px solid rgba(201,168,76,0.2)' }}>
         {isOrdine ? (
-          <div className="flex items-center gap-2 text-amber-700">
-            <span className="text-2xl">👨‍🍳</span>
-            <div className="text-left">
-              <p className="font-bold">In preparazione</p>
-              <p className="text-sm">Riceverai il tuo ordine al lettino</p>
+          isLettino ? (
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🏖️</span>
+              <div className="text-left">
+                <p className="font-bold" style={{ color: '#c9a84c' }}>
+                  Consegna al lettino
+                </p>
+                <p className="text-sm" style={{ color: '#666' }}>
+                  Il tuo ordine arriverà presto da te
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🏪</span>
+              <div className="text-left">
+                <p className="font-bold" style={{ color: '#c9a84c' }}>
+                  Ritiro al bancone
+                </p>
+                <p className="text-sm" style={{ color: '#666' }}>
+                  Vieni a ritirare il tuo ordine quando è pronto
+                </p>
+              </div>
+            </div>
+          )
         ) : (
-          <div className="flex items-center gap-2 text-sky-700">
-            <span className="text-2xl">⛱️</span>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">⛱️</span>
             <div className="text-left">
-              <p className="font-bold">Ombrellone prenotato</p>
-              <p className="text-sm">Presenta la conferma all'ingresso</p>
+              <p className="font-bold" style={{ color: '#c9a84c' }}>
+                Ombrellone prenotato
+              </p>
+              <p className="text-sm" style={{ color: '#666' }}>
+                Presenta la conferma all'ingresso
+              </p>
             </div>
           </div>
         )}
       </div>
 
+      {/* Pulsanti */}
       <div className="w-full max-w-sm space-y-3">
-        <Link href={isOrdine ? '/menu' : '/prenota'} className="btn-primary w-full block text-center">
-          {isOrdine ? '🍹 Aggiungi altri prodotti' : '⛱️ Altra prenotazione'}
+        <Link href={isOrdine ? '/menu' : '/prenota'}>
+          <button className="w-full py-4 rounded-2xl font-bold text-base mb-3"
+            style={{ backgroundColor: '#c9a84c', color: '#0a0a0a' }}>
+            {isOrdine ? '🍹 Aggiungi altri prodotti' : '⛱️ Altra prenotazione'}
+          </button>
         </Link>
-        <Link href="/" className="btn-secondary w-full block text-center">
-          🏠 Torna alla home
+        <Link href="/">
+          <button className="w-full py-4 rounded-2xl font-bold text-base"
+            style={{ backgroundColor: '#1a1a1a', color: '#c9a84c', border: '2px solid #c9a84c' }}>
+            🏠 Torna alla home
+          </button>
         </Link>
       </div>
 
       {contatore > 0 && (
-        <p className="text-gray-400 text-sm mt-6">
+        <p className="mt-6 text-sm" style={{ color: '#444' }}>
           Redirect automatico in {contatore}s...
         </p>
       )}

@@ -3,12 +3,91 @@
 import { useState, useEffect } from 'react';
 import type { Ombrellone } from '@/types';
 
-const COLORI = {
-  disponibile: { fill: '#ffffff', stroke: '#94a3b8', text: '#374151' },
-  occupato:    { fill: '#fecaca', stroke: '#ef4444', text: '#dc2626' },
-  bloccato:    { fill: '#fde68a', stroke: '#f59e0b', text: '#92400e' },
-  selezionato: { fill: '#bae6fd', stroke: '#0ea5e9', text: '#0369a1' },
-};
+interface OmbrelloneSelezionato {
+  ombrellone: Ombrellone;
+  lettini: number;
+}
+
+const PREZZO_LETTINO_EXTRA = 5.00;
+const MAX_LETTINI = 3;
+
+// Posizioni ombrelloni sulla foto reale (percentuali x,y rispetto all'immagine)
+// Zona A — ombrelloni bianchi sinistra (file diagonali vicino mare)
+// Zona B — ombrelloni bianchi centro
+// Zona C — ombrelloni blu destra
+// Zona D — ombrelloni paglia in basso
+const OMBRELLONI_LAYOUT = [
+  // ZONA A — sinistra vicino mare (bianchi)
+  { codice: 'A1',  x: 8,  y: 18, zona: 'A' },
+  { codice: 'A2',  x: 13, y: 22, zona: 'A' },
+  { codice: 'A3',  x: 18, y: 26, zona: 'A' },
+  { codice: 'A4',  x: 23, y: 30, zona: 'A' },
+  { codice: 'A5',  x: 8,  y: 28, zona: 'A' },
+  { codice: 'A6',  x: 13, y: 32, zona: 'A' },
+  { codice: 'A7',  x: 18, y: 36, zona: 'A' },
+  { codice: 'A8',  x: 23, y: 40, zona: 'A' },
+  { codice: 'A9',  x: 8,  y: 38, zona: 'A' },
+  { codice: 'A10', x: 13, y: 42, zona: 'A' },
+  { codice: 'A11', x: 18, y: 46, zona: 'A' },
+  { codice: 'A12', x: 23, y: 50, zona: 'A' },
+
+  // ZONA B — centro bianchi
+  { codice: 'B1',  x: 30, y: 18, zona: 'B' },
+  { codice: 'B2',  x: 36, y: 18, zona: 'B' },
+  { codice: 'B3',  x: 42, y: 18, zona: 'B' },
+  { codice: 'B4',  x: 30, y: 26, zona: 'B' },
+  { codice: 'B5',  x: 36, y: 26, zona: 'B' },
+  { codice: 'B6',  x: 42, y: 26, zona: 'B' },
+  { codice: 'B7',  x: 30, y: 34, zona: 'B' },
+  { codice: 'B8',  x: 36, y: 34, zona: 'B' },
+  { codice: 'B9',  x: 42, y: 34, zona: 'B' },
+  { codice: 'B10', x: 30, y: 42, zona: 'B' },
+  { codice: 'B11', x: 36, y: 42, zona: 'B' },
+  { codice: 'B12', x: 42, y: 42, zona: 'B' },
+
+  // ZONA C — destra bianchi+blu
+  { codice: 'C1',  x: 58, y: 18, zona: 'C' },
+  { codice: 'C2',  x: 64, y: 18, zona: 'C' },
+  { codice: 'C3',  x: 70, y: 18, zona: 'C' },
+  { codice: 'C4',  x: 76, y: 18, zona: 'C' },
+  { codice: 'C5',  x: 58, y: 26, zona: 'C' },
+  { codice: 'C6',  x: 64, y: 26, zona: 'C' },
+  { codice: 'C7',  x: 70, y: 26, zona: 'C' },
+  { codice: 'C8',  x: 76, y: 26, zona: 'C' },
+  { codice: 'C9',  x: 58, y: 34, zona: 'C' },
+  { codice: 'C10', x: 64, y: 34, zona: 'C' },
+  { codice: 'C11', x: 70, y: 34, zona: 'C' },
+  { codice: 'C12', x: 76, y: 34, zona: 'C' },
+  { codice: 'C13', x: 58, y: 42, zona: 'C' },
+  { codice: 'C14', x: 64, y: 42, zona: 'C' },
+  { codice: 'C15', x: 70, y: 42, zona: 'C' },
+  { codice: 'C16', x: 76, y: 42, zona: 'C' },
+  { codice: 'C17', x: 82, y: 18, zona: 'C' },
+  { codice: 'C18', x: 88, y: 18, zona: 'C' },
+  { codice: 'C19', x: 82, y: 26, zona: 'C' },
+  { codice: 'C20', x: 88, y: 26, zona: 'C' },
+  { codice: 'C21', x: 82, y: 34, zona: 'C' },
+  { codice: 'C22', x: 88, y: 34, zona: 'C' },
+  { codice: 'C23', x: 82, y: 42, zona: 'C' },
+  { codice: 'C24', x: 88, y: 42, zona: 'C' },
+
+  // ZONA D — paglia in basso destra
+  { codice: 'D1',  x: 62, y: 72, zona: 'D' },
+  { codice: 'D2',  x: 68, y: 72, zona: 'D' },
+  { codice: 'D3',  x: 74, y: 72, zona: 'D' },
+  { codice: 'D4',  x: 80, y: 72, zona: 'D' },
+  { codice: 'D5',  x: 86, y: 72, zona: 'D' },
+  { codice: 'D6',  x: 62, y: 80, zona: 'D' },
+  { codice: 'D7',  x: 68, y: 80, zona: 'D' },
+  { codice: 'D8',  x: 74, y: 80, zona: 'D' },
+  { codice: 'D9',  x: 80, y: 80, zona: 'D' },
+  { codice: 'D10', x: 86, y: 80, zona: 'D' },
+  { codice: 'D11', x: 62, y: 88, zona: 'D' },
+  { codice: 'D12', x: 68, y: 88, zona: 'D' },
+  { codice: 'D13', x: 74, y: 88, zona: 'D' },
+  { codice: 'D14', x: 80, y: 88, zona: 'D' },
+  { codice: 'D15', x: 86, y: 88, zona: 'D' },
+];
 
 export default function PrenotaPage() {
   const [data, setData] = useState(() => {
@@ -16,23 +95,24 @@ export default function PrenotaPage() {
     d.setDate(d.getDate() + 1);
     return d.toISOString().split('T')[0];
   });
-  const [ombrelloni, setOmbrelloni] = useState<Ombrellone[]>([]);
-  const [selezionato, setSelezionato] = useState<Ombrellone | null>(null);
+  const [ombrelloniDB, setOmbrelloniDB] = useState<Ombrellone[]>([]);
+  const [selezionati, setSelezionati] = useState<OmbrelloneSelezionato[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMap, setLoadingMap] = useState(false);
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [errore, setErrore] = useState('');
+  const [tooltip, setTooltip] = useState<{ codice: string; prezzo: number; stato: string } | null>(null);
 
   useEffect(() => {
     if (!data) return;
-    setSelezionato(null);
+    setSelezionati([]);
     setLoadingMap(true);
     async function caricaDisponibilita() {
       try {
         const res = await fetch(`/api/disponibilita?data=${data}`);
         const json = await res.json();
-        setOmbrelloni(json.ombrelloni);
+        setOmbrelloniDB(json.ombrelloni);
       } catch {
         console.error('Errore caricamento disponibilità');
       } finally {
@@ -42,44 +122,95 @@ export default function PrenotaPage() {
     caricaDisponibilita();
   }, [data]);
 
+  function getStatoOmbrellone(codice: string) {
+    if (selezionati.find((s) => s.ombrellone.codice === codice)) return 'selezionato';
+    const dbOm = ombrelloniDB.find((o) => o.codice === codice);
+    return dbOm?.stato ?? 'disponibile';
+  }
+
+  function getOmbrelloneDB(codice: string) {
+    return ombrelloniDB.find((o) => o.codice === codice);
+  }
+
+  function handleClickOmbrellone(codice: string) {
+    const stato = getStatoOmbrellone(codice);
+    if (stato === 'occupato' || stato === 'bloccato') return;
+    const dbOm = getOmbrelloneDB(codice);
+    if (!dbOm) return;
+
+    const esistente = selezionati.find((s) => s.ombrellone.codice === codice);
+    if (esistente) {
+      setSelezionati(selezionati.filter((s) => s.ombrellone.codice !== codice));
+    } else {
+      setSelezionati([...selezionati, { ombrellone: dbOm, lettini: 2 }]);
+    }
+  }
+
+  function cambiaLettini(id: string, delta: number) {
+    setSelezionati(selezionati.map((s) => {
+      if (s.ombrellone.id !== id) return s;
+      const nuovi = Math.max(1, Math.min(MAX_LETTINI, s.lettini + delta));
+      return { ...s, lettini: nuovi };
+    }));
+  }
+
+  function calcolaPrezzoOmbrellone(s: OmbrelloneSelezionato) {
+    const extra = Math.max(0, s.lettini - 2) * PREZZO_LETTINO_EXTRA;
+    return s.ombrellone.prezzo + extra;
+  }
+
+  function calcolaTotale() {
+    return selezionati.reduce((sum, s) => sum + calcolaPrezzoOmbrellone(s), 0);
+  }
+
   async function handlePrenota() {
-    if (!selezionato) { setErrore('Seleziona un ombrellone dalla mappa.'); return; }
+    if (selezionati.length === 0) { setErrore('Seleziona almeno un ombrellone.'); return; }
     if (!nome.trim()) { setErrore('Inserisci il tuo nome.'); return; }
     setErrore('');
     setLoading(true);
+
     try {
-      const blockRes = await fetch('/api/prenotazioni', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ombrellone_id: selezionato.id,
-          data,
-          nome_cliente: nome,
-          email_cliente: email || null,
-        }),
-      });
-      if (!blockRes.ok) {
-        const err = await blockRes.json();
-        throw new Error(err.message || 'Ombrellone non più disponibile');
+      const prenotazioneIds: string[] = [];
+      for (const s of selezionati) {
+        const blockRes = await fetch('/api/prenotazioni', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ombrellone_id: s.ombrellone.id,
+            data,
+            nome_cliente: nome,
+            email_cliente: email || null,
+            lettini: s.lettini,
+            totale: calcolaPrezzoOmbrellone(s),
+          }),
+        });
+        if (!blockRes.ok) {
+          const err = await blockRes.json();
+          throw new Error(`Ombrellone ${s.ombrellone.codice}: ${err.message}`);
+        }
+        const { prenotazione_id } = await blockRes.json();
+        prenotazioneIds.push(prenotazione_id);
       }
-      const { prenotazione_id } = await blockRes.json();
 
       const stripeRes = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tipo: 'prenotazione',
-          riferimento_id: prenotazione_id,
-          items: [{
-            nome: `Ombrellone ${selezionato.codice} — ${data}`,
-            prezzo: selezionato.prezzo,
+          riferimento_id: prenotazioneIds[0],
+          riferimento_ids: prenotazioneIds,
+          items: selezionati.map((s) => ({
+            nome: `Ombrellone ${s.ombrellone.codice} (${s.lettini} lettini) — ${data}`,
+            prezzo: calcolaPrezzoOmbrellone(s),
             qty: 1,
-          }],
+          })),
         }),
       });
+
       if (!stripeRes.ok) throw new Error('Errore Stripe');
       const { url } = await stripeRes.json();
       window.location.href = url;
+
     } catch (err: any) {
       setErrore(err.message || 'Errore durante la prenotazione. Riprova.');
       setLoading(false);
@@ -88,21 +219,34 @@ export default function PrenotaPage() {
 
   const oggi = new Date().toISOString().split('T')[0];
 
-  const getStato = (o: Ombrellone) => {
-    if (selezionato?.id === o.id) return 'selezionato';
-    return o.stato ?? 'disponibile';
+  // Colori per stato
+  const COLORI_STATO = {
+    disponibile: { fill: 'rgba(255,255,255,0.9)', stroke: '#c9a84c', text: '#0a0a0a', glow: 'rgba(201,168,76,0.6)' },
+    occupato:    { fill: 'rgba(255,59,48,0.85)',  stroke: '#ff3b30', text: '#ffffff', glow: 'rgba(255,59,48,0.6)' },
+    bloccato:    { fill: 'rgba(255,149,0,0.85)',  stroke: '#ff9500', text: '#ffffff', glow: 'rgba(255,149,0,0.6)' },
+    selezionato: { fill: 'rgba(52,199,89,0.9)',   stroke: '#34c759', text: '#ffffff', glow: 'rgba(52,199,89,0.8)' },
   };
 
   return (
-    <div className="animate-fade-in">
-      <div className="bg-white border-b border-gray-100 px-5 py-4">
-        <h1 className="text-2xl font-black text-gray-800">Prenota Ombrellone</h1>
-        <p className="text-gray-500 text-sm">Scegli il tuo posto sulla mappa</p>
+    <div style={{ backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+      <div style={{ height: '54px' }} />
+
+      {/* Header */}
+      <div className="px-5 py-4" style={{ borderBottom: '1px solid #2a2a2a' }}>
+        <h1 className="text-2xl font-black" style={{ color: '#c9a84c' }}>
+          Prenota Ombrellone
+        </h1>
+        <p style={{ color: '#666', fontSize: '0.8rem' }}>
+          Tocca gli ombrelloni sulla mappa per selezionarli
+        </p>
       </div>
 
-      <div className="px-5 py-4 space-y-4">
-        <div className="card p-4">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+      <div className="px-4 py-4 space-y-4">
+
+        {/* Data */}
+        <div className="rounded-2xl p-4"
+          style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+          <label className="block text-sm font-bold mb-2" style={{ color: '#c9a84c' }}>
             📅 Seleziona la data
           </label>
           <input
@@ -110,132 +254,369 @@ export default function PrenotaPage() {
             value={data}
             min={oggi}
             onChange={(e) => setData(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
+            className="w-full px-4 py-3 rounded-xl font-semibold"
+            style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }}
           />
         </div>
 
-        <div className="card p-4">
-          <h2 className="font-bold text-gray-700 mb-3 text-sm">Mappa ombrelloni</h2>
+        {/* Legenda */}
+        <div className="flex gap-3 flex-wrap px-1">
+          {Object.entries(COLORI_STATO).map(([stato, c]) => (
+            <div key={stato} className="flex items-center gap-1.5">
+              <div style={{
+                width: '14px', height: '14px', borderRadius: '50%',
+                backgroundColor: c.fill, border: `2px solid ${c.stroke}`,
+              }} />
+              <span style={{ fontSize: '0.68rem', color: '#666', fontWeight: 600 }}>
+                {stato.charAt(0).toUpperCase() + stato.slice(1)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* MAPPA CON FOTO REALE */}
+        <div className="rounded-2xl overflow-hidden"
+          style={{ border: '1px solid #2a2a2a', position: 'relative' }}>
+
           {loadingMap ? (
-            <div className="flex items-center justify-center h-48 text-gray-400">
+            <div className="flex items-center justify-center"
+              style={{ height: '400px', backgroundColor: '#1a1a1a' }}>
               <div className="text-center">
-                <div className="w-8 h-8 border-2 border-sky-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-sm">Caricamento mappa...</p>
+                <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-2"
+                  style={{ borderColor: '#c9a84c', borderTopColor: 'transparent' }} />
+                <p style={{ color: '#555', fontSize: '0.8rem' }}>Caricamento mappa...</p>
               </div>
             </div>
           ) : (
-            <div className="relative w-full">
-              <div className="flex items-center gap-4 mb-3 flex-wrap">
-                {Object.entries(COLORI).map(([stato, colori]) => (
-                  <div key={stato} className="flex items-center gap-1.5 text-xs text-gray-600">
-                    <div className="w-4 h-4 rounded-sm border" style={{ backgroundColor: colori.fill, borderColor: colori.stroke }} />
-                    <span className="capitalize">{stato}</span>
+            <div style={{ position: 'relative', width: '100%' }}>
+              {/* Foto reale del lido */}
+              <img
+                src="/sfondo_gate1.png"
+                alt="Lido Arcobaleno Gate 1"
+                style={{
+                  width: '100%',
+                  display: 'block',
+                  opacity: 0.85,
+                }}
+              />
+
+              {/* Overlay scuro per leggibilità */}
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.2) 100%)',
+                pointerEvents: 'none',
+              }} />
+
+              {/* Ombrelloni interattivi sovrapposti */}
+              <svg
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                }}
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
+                {OMBRELLONI_LAYOUT.map((layout) => {
+                  const stato = getStatoOmbrellone(layout.codice);
+                  const c = COLORI_STATO[stato as keyof typeof COLORI_STATO] || COLORI_STATO.disponibile;
+                  const isSelezionabile = stato !== 'occupato' && stato !== 'bloccato';
+                  const isSelezionato = stato === 'selezionato';
+                  const isDisponibile = stato === 'disponibile';
+                  const { x, y } = layout;
+
+                  return (
+                    <g
+                      key={layout.codice}
+                      onClick={() => handleClickOmbrellone(layout.codice)}
+                      onMouseEnter={() => {
+                        const dbOm = getOmbrelloneDB(layout.codice);
+                        if (dbOm) setTooltip({ codice: layout.codice, prezzo: dbOm.prezzo, stato });
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
+                      style={{ cursor: isSelezionabile ? 'pointer' : 'not-allowed' }}
+                    >
+                      {/* Glow effect */}
+                      {(isSelezionato || !isDisponibile) && (
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="3.5"
+                          fill={c.glow}
+                          opacity="0.3"
+                          style={{ filter: 'blur(1px)' }}
+                        />
+                      )}
+
+                      {/* Cerchio principale ombrellone */}
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={isSelezionato ? "3" : "2.5"}
+                        fill={c.fill}
+                        stroke={c.stroke}
+                        strokeWidth={isSelezionato ? "0.8" : "0.5"}
+                        style={{
+                          transition: 'all 0.3s ease',
+                          filter: isSelezionato ? `drop-shadow(0 0 2px ${c.stroke})` : 'none',
+                        }}
+                      />
+
+                      {/* Icona ombrellone dentro il cerchio */}
+                      {isDisponibile ? (
+                        /* Chiuso — linea verticale */
+                        <line
+                          x1={x} y1={y - 1.5}
+                          x2={x} y2={y + 1.5}
+                          stroke={c.stroke}
+                          strokeWidth="0.6"
+                          strokeLinecap="round"
+                        />
+                      ) : isSelezionato ? (
+                        /* Selezionato — checkmark */
+                        <path
+                          d={`M ${x - 1.2} ${y} L ${x - 0.3} ${y + 0.9} L ${x + 1.2} ${y - 0.8}`}
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="0.7"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      ) : stato === 'occupato' ? (
+                        /* Occupato — X */
+                        <>
+                          <line x1={x - 1} y1={y - 1} x2={x + 1} y2={y + 1}
+                            stroke="white" strokeWidth="0.6" strokeLinecap="round" />
+                          <line x1={x + 1} y1={y - 1} x2={x - 1} y2={y + 1}
+                            stroke="white" strokeWidth="0.6" strokeLinecap="round" />
+                        </>
+                      ) : (
+                        /* Bloccato — orologio */
+                        <circle cx={x} cy={y} r="1"
+                          fill="none" stroke="white" strokeWidth="0.4" />
+                      )}
+
+                      {/* Codice ombrellone */}
+                      <text
+                        x={x}
+                        y={y + 4}
+                        textAnchor="middle"
+                        fontSize="1.6"
+                        fontWeight="bold"
+                        fill={c.stroke}
+                        fontFamily="sans-serif"
+                        style={{
+                          textShadow: '0 1px 2px rgba(0,0,0,0.8)',
+                          paintOrder: 'stroke',
+                          stroke: 'rgba(0,0,0,0.6)',
+                          strokeWidth: '0.4px',
+                        }}
+                      >
+                        {layout.codice}
+                      </text>
+
+                      {/* Anello pulsante per selezionato */}
+                      {isSelezionato && (
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="4"
+                          fill="none"
+                          stroke={c.stroke}
+                          strokeWidth="0.5"
+                          strokeDasharray="1.5,1"
+                          style={{ animation: 'spinEllipse 3s linear infinite' }}
+                        />
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Label zone */}
+              <div style={{ position: 'absolute', top: '8px', left: '8px' }}>
+                {['A', 'B', 'C', 'D'].map((zona, i) => (
+                  <div key={zona} style={{
+                    display: 'inline-block',
+                    marginRight: '6px',
+                    padding: '2px 8px',
+                    borderRadius: '20px',
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    color: '#c9a84c',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    backdropFilter: 'blur(4px)',
+                    border: '1px solid rgba(201,168,76,0.3)',
+                  }}>
+                    Zona {zona}
                   </div>
                 ))}
               </div>
-              <div className="bg-sky-50 rounded-2xl overflow-hidden border border-sky-100">
-                <div className="bg-sky-400/20 py-1.5 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-sky-700 tracking-widest">🌊 MARE</span>
+
+              {/* Tooltip */}
+              {tooltip && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: 'rgba(0,0,0,0.85)',
+                  color: '#c9a84c',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  border: '1px solid rgba(201,168,76,0.3)',
+                  backdropFilter: 'blur(8px)',
+                  whiteSpace: 'nowrap',
+                  pointerEvents: 'none',
+                }}>
+                  {tooltip.codice} — €{tooltip.prezzo?.toFixed(2)}/giorno — {tooltip.stato}
                 </div>
-                <svg viewBox="0 0 100 100" className="w-full" xmlns="http://www.w3.org/2000/svg">
-                  <rect width="100" height="100" fill="#fefce8" />
-                  {ombrelloni.map((o) => {
-                    const stato = getStato(o);
-                    const c = COLORI[stato];
-                    const isSelezionabile = stato !== 'occupato' && stato !== 'bloccato';
-                    return (
-                      <g
-                        key={o.id}
-                        onClick={() => isSelezionabile && setSelezionato(o)}
-                        style={{ cursor: isSelezionabile ? 'pointer' : 'not-allowed' }}
-                      >
-                        <line x1={o.x} y1={o.y - 2} x2={o.x} y2={o.y + 3.5} stroke={c.stroke} strokeWidth="0.8" />
-                        <rect x={o.x - 3.5} y={o.y + 2.5} width="3" height="1.5" rx="0.5" fill={c.fill} stroke={c.stroke} strokeWidth="0.3" />
-                        <rect x={o.x + 0.5} y={o.y + 2.5} width="3" height="1.5" rx="0.5" fill={c.fill} stroke={c.stroke} strokeWidth="0.3" />
-                        <ellipse cx={o.x} cy={o.y - 1.5} rx="4" ry="2.5" fill={c.fill} stroke={c.stroke} strokeWidth="0.6" />
-                        <text x={o.x} y={o.y - 1} textAnchor="middle" fontSize="1.8" fontWeight="bold" fill={c.text}>
-                          {o.codice}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-              <p className="text-xs text-gray-400 text-center mt-2">
-                Tocca un ombrellone bianco per selezionarlo
-              </p>
+              )}
             </div>
           )}
         </div>
 
-        {selezionato && (
-          <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-3xl">⛱️</div>
-              <div>
-                <p className="font-bold text-sky-800">Ombrellone {selezionato.codice} — Zona {selezionato.zona}</p>
-                <p className="text-sky-600 font-semibold">€{selezionato.prezzo.toFixed(2)}/giorno</p>
+        {/* Ombrelloni selezionati */}
+        {selezionati.length > 0 && (
+          <div className="rounded-2xl overflow-hidden"
+            style={{ border: '1px solid rgba(52,199,89,0.3)' }}>
+            <div className="px-4 py-3"
+              style={{ backgroundColor: 'rgba(52,199,89,0.1)', borderBottom: '1px solid rgba(52,199,89,0.2)' }}>
+              <p className="font-bold text-sm" style={{ color: '#34c759' }}>
+                ✅ {selezionati.length} ombrellone{selezionati.length > 1 ? 'i' : ''} selezionato{selezionati.length > 1 ? 'i' : ''}
+              </p>
+            </div>
+
+            {selezionati.map((s) => (
+              <div key={s.ombrellone.id}
+                className="px-4 py-3 flex items-center justify-between"
+                style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #2a2a2a' }}>
+                <div>
+                  <p className="font-bold" style={{ color: '#e8e8e8' }}>
+                    ⛱️ Ombrellone {s.ombrellone.codice} — Zona {s.ombrellone.zona}
+                  </p>
+                  <p style={{ color: '#c9a84c', fontSize: '0.8rem', fontWeight: 600 }}>
+                    €{calcolaPrezzoOmbrellone(s).toFixed(2)}
+                    {s.lettini > 2 && (
+                      <span style={{ color: '#888', fontSize: '0.72rem' }}>
+                        {' '}(+€{((s.lettini - 2) * PREZZO_LETTINO_EXTRA).toFixed(2)} lettino extra)
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span style={{ color: '#666', fontSize: '0.75rem' }}>🛏️</span>
+                  <button
+                    onClick={() => cambiaLettini(s.ombrellone.id, -1)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center font-bold"
+                    style={{ backgroundColor: '#2a2a2a', color: '#888', fontSize: '1rem' }}>
+                    −
+                  </button>
+                  <span className="w-5 text-center font-black" style={{ color: '#e8e8e8' }}>
+                    {s.lettini}
+                  </span>
+                  <button
+                    onClick={() => cambiaLettini(s.ombrellone.id, 1)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center font-bold"
+                    style={{ backgroundColor: '#c9a84c', color: '#0a0a0a', fontSize: '1rem' }}>
+                    +
+                  </button>
+                  <button
+                    onClick={() => setSelezionati(selezionati.filter((x) => x.ombrellone.id !== s.ombrellone.id))}
+                    style={{ color: '#ef4444', fontSize: '1.1rem', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '4px' }}>
+                    ✕
+                  </button>
+                </div>
               </div>
+            ))}
+
+            <div className="px-4 py-3 flex justify-between items-center"
+              style={{ backgroundColor: '#1a1a1a' }}>
+              <span className="font-bold" style={{ color: '#888' }}>Totale</span>
+              <span className="text-xl font-black" style={{ color: '#c9a84c' }}>
+                €{calcolaTotale().toFixed(2)}
+              </span>
             </div>
           </div>
         )}
 
-        <div className="card p-5 space-y-3">
-          <h2 className="font-bold text-gray-800">Dati prenotazione</h2>
+        {/* Form */}
+        <div className="rounded-2xl p-5 space-y-3"
+          style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+          <h2 className="font-bold" style={{ color: '#c9a84c' }}>Dati prenotazione</h2>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Nome e cognome <span className="text-red-500">*</span>
+            <label className="block text-sm font-bold mb-1.5" style={{ color: '#888' }}>
+              Nome e cognome <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <input
               type="text"
               placeholder="Mario Rossi"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              className="w-full px-4 py-3 rounded-xl"
+              style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Email <span className="text-gray-400 text-xs">(per ricevere conferma)</span>
+            <label className="block text-sm font-bold mb-1.5" style={{ color: '#888' }}>
+              Email <span style={{ color: '#555', fontSize: '0.75rem' }}>(per conferma)</span>
             </label>
             <input
               type="email"
               placeholder="mario@esempio.it"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              className="w-full px-4 py-3 rounded-xl"
+              style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }}
             />
           </div>
         </div>
 
         {errore && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm text-center">
+          <div className="p-3 rounded-xl text-sm text-center"
+            style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}>
             ⚠️ {errore}
           </div>
         )}
 
         <button
           onClick={handlePrenota}
-          disabled={loading || !selezionato}
-          className="w-full btn-primary text-lg py-4 flex items-center justify-center gap-2 disabled:opacity-40"
-        >
+          disabled={loading || selezionati.length === 0}
+          className="w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
+          style={{
+            backgroundColor: selezionati.length === 0 ? '#2a2a2a' : '#c9a84c',
+            color: selezionati.length === 0 ? '#555' : '#0a0a0a',
+          }}>
           {loading ? (
             <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin"
+                style={{ borderColor: '#0a0a0a', borderTopColor: 'transparent' }} />
               <span>Attendere...</span>
             </>
           ) : (
-            <>
-              <span>🔒</span>
-              <span>{selezionato ? `Prenota — €${selezionato.prezzo.toFixed(2)}` : 'Seleziona un ombrellone'}</span>
-            </>
+            <>🔒 {selezionati.length === 0
+              ? 'Seleziona un ombrellone'
+              : `Prenota ${selezionati.length} ombrellone${selezionati.length > 1 ? 'i' : ''} — €${calcolaTotale().toFixed(2)}`
+            }</>
           )}
         </button>
 
-        <p className="text-center text-xs text-gray-400">
+        <p className="text-center text-xs pb-4" style={{ color: '#444' }}>
           Il posto verrà bloccato per 10 minuti durante il pagamento.
         </p>
       </div>
+
+      <style>{`
+        @keyframes spinEllipse {
+          from { stroke-dashoffset: 0; }
+          to { stroke-dashoffset: -20; }
+        }
+      `}</style>
     </div>
   );
 }

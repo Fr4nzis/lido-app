@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCarrelloStore } from '@/lib/store';
@@ -8,95 +8,202 @@ import { useCarrelloStore } from '@/lib/store';
 export default function HomePage() {
   const searchParams = useSearchParams();
   const { setLettino, lettino } = useCarrelloStore();
+  const [ora, setOra] = useState('');
 
   useEffect(() => {
     const spot = searchParams.get('spot');
-    if (spot) {
-      setLettino(spot.toUpperCase());
-    }
+    if (spot) setLettino(spot.toUpperCase());
   }, [searchParams, setLettino]);
 
+  useEffect(() => {
+    function aggiornaOra() {
+      setOra(new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
+    }
+    aggiornaOra();
+    const timer = setInterval(aggiornaOra, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="relative h-[55vh] overflow-hidden bg-sky-900">
-        <div className="absolute inset-0 bg-gradient-to-b from-sky-900/30 via-transparent to-sky-950/80" />
-        <div className="relative h-full flex flex-col items-center justify-end pb-8 px-6 text-white text-center">
+    <div style={{ backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+      <div style={{ height: '54px' }} />
+
+      {/* HERO */}
+      <div className="relative overflow-hidden" style={{ minHeight: '40vh' }}>
+        {/* Sfondo gradiente mare */}
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(180deg, #001a2e 0%, #003d5c 40%, #1a1208 100%)',
+        }} />
+
+        {/* Onde decorative */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px' }}>
+          <svg viewBox="0 0 1440 80" preserveAspectRatio="none"
+            style={{ width: '100%', height: '100%' }}>
+            <path
+              d="M0,40 C240,80 480,0 720,40 C960,80 1200,0 1440,40 L1440,80 L0,80 Z"
+              fill="#0a0a0a"
+            />
+          </svg>
+        </div>
+
+        {/* Contenuto hero */}
+        <div className="relative flex flex-col items-center justify-center text-center px-6 py-12">
+          <img
+            src="/Logo_del_Lido_Arcobaleno.png"
+            alt="Lido Arcobaleno Gate 1"
+            style={{ width: '180px', objectFit: 'contain', marginBottom: '16px' }}
+          />
+
           {lettino && (
-            <div className="mb-4 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-medium">
-              🏖️ Lettino <span className="font-bold">{lettino}</span>
+            <div className="mb-3 px-4 py-2 rounded-full text-sm font-bold"
+              style={{
+                backgroundColor: 'rgba(201,168,76,0.2)',
+                border: '1px solid rgba(201,168,76,0.4)',
+                color: '#c9a84c',
+              }}>
+              🏖️ Lettino {lettino}
             </div>
           )}
-          <h1 className="text-4xl font-black tracking-tight drop-shadow-lg">
-            Lido Azzurro
-          </h1>
-          <p className="mt-2 text-sky-100 text-lg font-light">
-            Il mare a portata di tap
+
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
+            Ordina, prenota, goditi il mare
           </p>
+
+          {/* Ora corrente */}
+          {ora && (
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', marginTop: '8px' }}>
+              🕐 {ora}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 bg-white rounded-t-3xl -mt-6 relative z-10 px-5 pt-8 pb-6">
-        {!lettino && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
-            <p className="text-amber-700 text-sm font-medium">
-              📍 Scansiona il QR sul tuo lettino oppure selezionalo al checkout
-            </p>
+      {/* AZIONI */}
+      <div className="px-5 pb-8 space-y-3">
+
+        {/* Ordina */}
+        <Link href="/menu">
+          <div className="p-5 flex items-center gap-4 rounded-2xl mb-3"
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #1f1a0f 100%)',
+              border: '1px solid rgba(201,168,76,0.25)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05))' }}>
+              🍹
+            </div>
+            <div className="flex-1">
+              <h3 className="font-black text-lg" style={{ color: '#c9a84c' }}>
+                Ordina dal lettino
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.82rem' }}>
+                Bar, cucina, cocktail — consegnati da te
+              </p>
+            </div>
+            <span style={{ color: '#333', fontSize: '1.3rem' }}>›</span>
           </div>
-        )}
+        </Link>
 
-        <h2 className="text-xl font-bold text-gray-800 mb-5">Cosa vuoi fare?</h2>
-
-        <div className="space-y-3">
-          <Link href="/menu">
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer">
-              <div className="w-14 h-14 bg-sky-100 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">🍹</div>
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-800 text-lg">Ordina dal lettino</h3>
-                <p className="text-gray-500 text-sm mt-0.5">Bar, cucina, cocktail</p>
-              </div>
-              <div className="text-gray-300 text-xl">›</div>
+        {/* Prenota */}
+        <Link href="/prenota">
+          <div className="p-5 flex items-center gap-4 rounded-2xl mb-3"
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #0f1a1f 100%)',
+              border: '1px solid rgba(0,153,204,0.25)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, rgba(0,153,204,0.2), rgba(0,153,204,0.05))' }}>
+              ⛱️
             </div>
-          </Link>
-
-          <Link href="/prenota">
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer">
-              <div className="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">⛱️</div>
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-800 text-lg">Prenota ombrellone</h3>
-                <p className="text-gray-500 text-sm mt-0.5">Scegli il tuo posto sulla mappa</p>
-              </div>
-              <div className="text-gray-300 text-xl">›</div>
+            <div className="flex-1">
+              <h3 className="font-black text-lg" style={{ color: '#0099cc' }}>
+                Prenota ombrellone
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.82rem' }}>
+                Scegli il tuo posto sulla mappa
+              </p>
             </div>
-          </Link>
+            <span style={{ color: '#333', fontSize: '1.3rem' }}>›</span>
+          </div>
+        </Link>
 
-          <Link href="/info">
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer">
-              <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0">🌊</div>
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-800 text-lg">Scopri il lido</h3>
-                <p className="text-gray-500 text-sm mt-0.5">Servizi, orari e dove siamo</p>
-              </div>
-              <div className="text-gray-300 text-xl">›</div>
+        {/* I tuoi ordini */}
+        <Link href="/ordini">
+          <div className="p-5 flex items-center gap-4 rounded-2xl mb-3"
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #0f1a0f 100%)',
+              border: '1px solid rgba(22,163,74,0.25)',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, rgba(22,163,74,0.2), rgba(22,163,74,0.05))' }}>
+              📋
             </div>
-          </Link>
-        </div>
+            <div className="flex-1">
+              <h3 className="font-black text-lg" style={{ color: '#16a34a' }}>
+                I tuoi ordini
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.82rem' }}>
+                Traccia i tuoi ordini in tempo reale
+              </p>
+            </div>
+            <span style={{ color: '#333', fontSize: '1.3rem' }}>›</span>
+          </div>
+        </Link>
 
-        <div className="mt-6 bg-sky-50 rounded-2xl p-4">
+        {/* Info */}
+        <Link href="/info">
+          <div className="p-5 flex items-center gap-4 rounded-2xl"
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #1a1a1a 100%)',
+              border: '1px solid #2a2a2a',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))' }}>
+              🌊
+            </div>
+            <div className="flex-1">
+              <h3 className="font-black text-lg" style={{ color: '#e8e8e8' }}>
+                Scopri il lido
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.82rem' }}>
+                Servizi, orari e dove siamo
+              </p>
+            </div>
+            <span style={{ color: '#333', fontSize: '1.3rem' }}>›</span>
+          </div>
+        </Link>
+
+        {/* Orari */}
+        <div className="p-4 rounded-2xl mt-2"
+          style={{
+            background: 'linear-gradient(135deg, #1a1208 0%, #0f0f0f 100%)',
+            border: '1px solid rgba(201,168,76,0.15)',
+          }}>
+          <p className="text-center text-xs font-bold mb-3"
+            style={{ color: '#555', letterSpacing: '0.1em' }}>
+            ORARI DI OGGI
+          </p>
           <div className="flex justify-between items-center">
-            <div className="text-center">
-              <p className="text-xs text-gray-500 font-medium">APERTURA</p>
-              <p className="text-lg font-bold text-sky-600">09:00</p>
-            </div>
-            <div className="h-8 w-px bg-sky-200" />
-            <div className="text-center">
-              <p className="text-xs text-gray-500 font-medium">CUCINA</p>
-              <p className="text-lg font-bold text-sky-600">12-15</p>
-            </div>
-            <div className="h-8 w-px bg-sky-200" />
-            <div className="text-center">
-              <p className="text-xs text-gray-500 font-medium">CHIUSURA</p>
-              <p className="text-lg font-bold text-sky-600">20:00</p>
-            </div>
+            {[
+              { label: 'Apertura', val: '09:00' },
+              { label: 'Cucina', val: '12-15' },
+              { label: 'Chiusura', val: '20:00' },
+            ].map((o, i) => (
+              <div key={i} className="text-center flex-1">
+                <p style={{ fontSize: '0.6rem', color: '#555', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {o.label}
+                </p>
+                <p style={{ fontSize: '1.1rem', fontWeight: 900, color: '#c9a84c' }}>
+                  {o.val}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -3,19 +3,25 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import BottomNav from '@/components/BottomNav';
 import CartButton from '@/components/CartButton';
+import StaffButton from '@/components/StaffButton';
+import LoadingScreen from '@/components/LoadingScreen';
+import PageTransition from '@/components/PageTransition';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Lido Azzurro',
+  title: 'Lido Arcobaleno Gate 1',
   description: 'Ordina, prenota, goditi il mare',
+  icons: {
+    icon: '/Logo_del_Lido_Arcobaleno.png',
+  },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#0ea5e9',
+  themeColor: '#0a0a0a',
 };
 
 export default function RootLayout({
@@ -25,9 +31,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="it">
-      <body className={`${inter.className} bg-gray-50`}>
+      <body className={`${inter.className}`} style={{ backgroundColor: '#0a0a0a' }}>
+        <LoadingScreen />
+        <StaffButton />
         <main className="min-h-screen pb-20">
-          {children}
+          <PageTransition>
+            {children}
+          </PageTransition>
         </main>
         <CartButton />
         <BottomNav />
