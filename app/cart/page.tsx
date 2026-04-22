@@ -1,21 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCarrelloStore } from '@/lib/store';
 
 const LETTINI = [
-  'A1','A2','A3','A4','A5','A6',
-  'B1','B2','B3','B4','B5','B6',
-  'C1','C2','C3','C4','C5','C6',
-  'D1','D2','D3','D4','D5','D6',
-  'E1','E2','E3','E4','E5','E6',
+  'A1','A2','A3','A4','A5','A6','A7','A8','A9','A10','A11','A12',
+  'B1','B2','B3','B4','B5','B6','B7','B8','B9','B10','B11','B12',
+  'C1','C2','C3','C4','C5','C6','C7','C8','C9','C10','C11','C12',
+  'C13','C14','C15','C16','C17','C18','C19','C20','C21','C22','C23','C24',
+  'D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','D11','D12','D13','D14','D15',
 ];
 
 const COSTO_CONSEGNA = 0.50;
 
-export default function CartPage() {
+function CartPage() {
   const searchParams = useSearchParams();
   const {
     items, totale, totaleItems,
@@ -27,7 +27,6 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState('');
 
-  // Se il cliente ha annullato il pagamento su Stripe
   useEffect(() => {
     const cancelled = searchParams.get('cancelled');
     if (cancelled === 'true') {
@@ -47,7 +46,8 @@ export default function CartPage() {
         <h2 className="text-2xl font-bold" style={{ color: '#c9a84c' }}>Carrello vuoto</h2>
         <p className="mt-2" style={{ color: '#666' }}>Aggiungi qualcosa dal menu!</p>
         <Link href="/menu">
-          <button className="btn-primary mt-6 px-8 py-3 rounded-2xl font-bold">
+          <button className="mt-6 px-8 py-3 rounded-2xl font-bold"
+            style={{ backgroundColor: '#c9a84c', color: '#0a0a0a' }}>
             Vai al menu
           </button>
         </Link>
@@ -145,14 +145,12 @@ export default function CartPage() {
                 <button
                   onClick={() => diminuisciQty(item.id)}
                   className="w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold"
-                  style={{ backgroundColor: '#2a2a2a', color: '#888' }}
-                >−</button>
+                  style={{ backgroundColor: '#2a2a2a', color: '#888' }}>−</button>
                 <span className="w-5 text-center font-bold" style={{ color: '#e8e8e8' }}>{item.qty}</span>
                 <button
                   onClick={() => aumentaQty(item.id)}
                   className="w-8 h-8 rounded-full flex items-center justify-center text-lg font-bold"
-                  style={{ backgroundColor: '#c9a84c', color: '#0a0a0a' }}
-                >+</button>
+                  style={{ backgroundColor: '#c9a84c', color: '#0a0a0a' }}>+</button>
               </div>
             </div>
           ))}
@@ -194,7 +192,6 @@ export default function CartPage() {
             />
           </div>
 
-          {/* Modalità consegna */}
           <div>
             <label className="block text-sm font-bold mb-2" style={{ color: '#888' }}>
               Modalità consegna
@@ -211,13 +208,14 @@ export default function CartPage() {
                   style={{
                     border: modalita === opt.id ? '2px solid #c9a84c' : '2px solid #2a2a2a',
                     backgroundColor: modalita === opt.id ? 'rgba(201,168,76,0.1)' : '#2a2a2a',
-                  }}
-                >
+                  }}>
                   <span className="text-2xl">{opt.emoji}</span>
-                  <span className="text-sm font-bold" style={{ color: modalita === opt.id ? '#c9a84c' : '#666' }}>
+                  <span className="text-sm font-bold"
+                    style={{ color: modalita === opt.id ? '#c9a84c' : '#666' }}>
                     {opt.label}
                   </span>
-                  <span className="text-xs" style={{ color: modalita === opt.id ? '#c9a84c' : '#555' }}>
+                  <span className="text-xs"
+                    style={{ color: modalita === opt.id ? '#c9a84c' : '#555' }}>
                     {opt.costo}
                   </span>
                 </button>
@@ -263,8 +261,7 @@ export default function CartPage() {
             backgroundColor: loading ? '#666' : '#c9a84c',
             color: '#0a0a0a',
             opacity: loading ? 0.7 : 1,
-          }}
-        >
+          }}>
           {loading ? (
             <>
               <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -275,10 +272,23 @@ export default function CartPage() {
           )}
         </button>
 
-        <p className="text-center text-xs" style={{ color: '#444' }}>
+        <p className="text-center text-xs pb-4" style={{ color: '#444' }}>
           Pagamento sicuro con Stripe.
         </p>
       </div>
     </div>
+  );
+}
+
+export default function CartPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: '#c9a84c', borderTopColor: 'transparent' }} />
+      </div>
+    }>
+      <CartPage />
+    </Suspense>
   );
 }
