@@ -40,7 +40,7 @@ export default function StaffCassaPage() {
       const json = await res.json();
       setOmbrelloni(json.ombrelloni);
 
-      cconst { data: pren, error: prenError } = await supabase
+      const { data: pren, error: prenError } = await supabase
   .from('prenotazioni')
   .select(`
     *,
