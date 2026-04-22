@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCarrelloStore } from '@/lib/store';
 
-export default function HomePage() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const { setLettino, lettino } = useCarrelloStore();
   const [ora, setOra] = useState('');
@@ -30,32 +30,26 @@ export default function HomePage() {
 
       {/* HERO */}
       <div className="relative overflow-hidden" style={{ minHeight: '40vh' }}>
-        {/* Sfondo gradiente mare */}
         <div style={{
           position: 'absolute',
           inset: 0,
           background: 'linear-gradient(180deg, #001a2e 0%, #003d5c 40%, #1a1208 100%)',
         }} />
 
-        {/* Onde decorative */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px' }}>
           <svg viewBox="0 0 1440 80" preserveAspectRatio="none"
             style={{ width: '100%', height: '100%' }}>
-            <path
-              d="M0,40 C240,80 480,0 720,40 C960,80 1200,0 1440,40 L1440,80 L0,80 Z"
-              fill="#0a0a0a"
-            />
+            <path d="M0,40 C240,80 480,0 720,40 C960,80 1200,0 1440,40 L1440,80 L0,80 Z"
+              fill="#0a0a0a" />
           </svg>
         </div>
 
-        {/* Contenuto hero */}
         <div className="relative flex flex-col items-center justify-center text-center px-6 py-12">
           <img
             src="/Logo_del_Lido_Arcobaleno.png"
             alt="Lido Arcobaleno Gate 1"
             style={{ width: '180px', objectFit: 'contain', marginBottom: '16px' }}
           />
-
           {lettino && (
             <div className="mb-3 px-4 py-2 rounded-full text-sm font-bold"
               style={{
@@ -66,12 +60,9 @@ export default function HomePage() {
               🏖️ Lettino {lettino}
             </div>
           )}
-
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem' }}>
             Ordina, prenota, goditi il mare
           </p>
-
-          {/* Ora corrente */}
           {ora && (
             <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', marginTop: '8px' }}>
               🕐 {ora}
@@ -82,8 +73,6 @@ export default function HomePage() {
 
       {/* AZIONI */}
       <div className="px-5 pb-8 space-y-3">
-
-        {/* Ordina */}
         <Link href="/menu">
           <div className="p-5 flex items-center gap-4 rounded-2xl mb-3"
             style={{
@@ -96,18 +85,13 @@ export default function HomePage() {
               🍹
             </div>
             <div className="flex-1">
-              <h3 className="font-black text-lg" style={{ color: '#c9a84c' }}>
-                Ordina dal lettino
-              </h3>
-              <p style={{ color: '#666', fontSize: '0.82rem' }}>
-                Bar, cucina, cocktail — consegnati da te
-              </p>
+              <h3 className="font-black text-lg" style={{ color: '#c9a84c' }}>Ordina dal lettino</h3>
+              <p style={{ color: '#666', fontSize: '0.82rem' }}>Bar, cucina, cocktail — consegnati da te</p>
             </div>
             <span style={{ color: '#333', fontSize: '1.3rem' }}>›</span>
           </div>
         </Link>
 
-        {/* Prenota */}
         <Link href="/prenota">
           <div className="p-5 flex items-center gap-4 rounded-2xl mb-3"
             style={{
@@ -120,18 +104,13 @@ export default function HomePage() {
               ⛱️
             </div>
             <div className="flex-1">
-              <h3 className="font-black text-lg" style={{ color: '#0099cc' }}>
-                Prenota ombrellone
-              </h3>
-              <p style={{ color: '#666', fontSize: '0.82rem' }}>
-                Scegli il tuo posto sulla mappa
-              </p>
+              <h3 className="font-black text-lg" style={{ color: '#0099cc' }}>Prenota ombrellone</h3>
+              <p style={{ color: '#666', fontSize: '0.82rem' }}>Scegli il tuo posto sulla mappa</p>
             </div>
             <span style={{ color: '#333', fontSize: '1.3rem' }}>›</span>
           </div>
         </Link>
 
-        {/* I tuoi ordini */}
         <Link href="/ordini">
           <div className="p-5 flex items-center gap-4 rounded-2xl mb-3"
             style={{
@@ -144,18 +123,13 @@ export default function HomePage() {
               📋
             </div>
             <div className="flex-1">
-              <h3 className="font-black text-lg" style={{ color: '#16a34a' }}>
-                I tuoi ordini
-              </h3>
-              <p style={{ color: '#666', fontSize: '0.82rem' }}>
-                Traccia i tuoi ordini in tempo reale
-              </p>
+              <h3 className="font-black text-lg" style={{ color: '#16a34a' }}>I tuoi ordini</h3>
+              <p style={{ color: '#666', fontSize: '0.82rem' }}>Traccia i tuoi ordini in tempo reale</p>
             </div>
             <span style={{ color: '#333', fontSize: '1.3rem' }}>›</span>
           </div>
         </Link>
 
-        {/* Info */}
         <Link href="/info">
           <div className="p-5 flex items-center gap-4 rounded-2xl"
             style={{
@@ -168,12 +142,8 @@ export default function HomePage() {
               🌊
             </div>
             <div className="flex-1">
-              <h3 className="font-black text-lg" style={{ color: '#e8e8e8' }}>
-                Scopri il lido
-              </h3>
-              <p style={{ color: '#666', fontSize: '0.82rem' }}>
-                Servizi, orari e dove siamo
-              </p>
+              <h3 className="font-black text-lg" style={{ color: '#e8e8e8' }}>Scopri il lido</h3>
+              <p style={{ color: '#666', fontSize: '0.82rem' }}>Servizi, orari e dove siamo</p>
             </div>
             <span style={{ color: '#333', fontSize: '1.3rem' }}>›</span>
           </div>
@@ -208,5 +178,18 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: '#c9a84c', borderTopColor: 'transparent' }} />
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
