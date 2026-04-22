@@ -25,7 +25,7 @@ export default function LoadingScreen() {
   return (
     <div
       className="fixed inset-0 z-[9999] overflow-hidden"
-      style={{ pointerEvents: fase === 'finito' ? 'none' : 'all' }}
+      style={{ pointerEvents: fase === 'uscita' ? 'none' : 'all' }}
     >
       {/* Onda principale */}
       <div
