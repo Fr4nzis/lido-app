@@ -135,10 +135,13 @@ function getTheme() {
 
 export default function PrenotaPage() {
   const [data, setData] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
-  });
+  const ora = new Date();
+  // Se siamo dopo le 20:00, il lido è chiuso — mostra domani
+  if (ora.getHours() >= 20) {
+    ora.setDate(ora.getDate() + 1);
+  }
+  return ora.toISOString().split('T')[0];
+});
   const [fascia, setFascia] = useState<FasciaOraria>('giornata');
   const [ombrelloniDB, setOmbrelloniDB] = useState<Ombrellone[]>([]);
   const [selezionati, setSelezionati] = useState<OmbrelloneSelezionato[]>([]);
