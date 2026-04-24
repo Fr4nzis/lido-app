@@ -11,279 +11,273 @@ function getPageIndex(pathname: string): number {
   return idx === -1 ? 0 : idx;
 }
 
-interface PageState {
-  content: React.ReactNode;
-  index: number;
-  pathname: string;
-}
-
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Stato pagine
-  const [pages, setPages] = useState<PageState[]>([
-    { content: children, index: getPageIndex(pathname), pathname }
-  ]);
-  const [activeIdx, setActiveIdx] = useState(0); // indice nell'array pages
+  // Teniamo solo 2 snapshot: current e next
+  const [snapshot, setSnapshot] = useState<{
+    current: React.ReactNode;
+    next: React.ReactNode | null;
+    direction: 'left' | 'right';
+    phase: 'idle' | 'animating';
+  }>({
+    current: children,
+    next: null,
+    direction: 'left',
+    phase: 'idle',
+  });
 
-  // Stato drag
-  const dragRef = useRef({
+  const prevPathname = useRef(pathname);
+  const prevChildren = useRef(children);
+
+  // Drag state
+  const drag = useRef({
     active: false,
     startX: 0,
     startY: 0,
-    currentX: 0,
+    dx: 0,
     lastX: 0,
     lastTime: 0,
     velocity: 0,
+    locked: false,
     isHorizontal: false,
-    directionLocked: false,
   });
 
-  // Stato animazione (RAF)
-  const animRef = useRef<number>(0);
-  const offsetRef = useRef(0); // offset corrente in px
-  const targetOffsetRef = useRef(0);
-  const isAnimatingRef = useRef(false);
-  const widthRef = useRef(0);
+  // Animazione
+  const rafRef = useRef<number>(0);
+  const currentXRef = useRef(0); // posizione corrente pannello current
+  const isDraggingRef = useRef(false);
 
-  // Pannelli DOM refs
-  const panelRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const W = () => containerRef.current?.offsetWidth || window.innerWidth;
 
-  // Aggiorna larghezza
-  useEffect(() => {
-    const update = () => {
-      widthRef.current = containerRef.current?.offsetWidth || window.innerWidth;
-    };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
+  // Aggiorna pannelli con transform diretto
+  const setPanelX = (currentX: number, dir: 'left' | 'right') => {
+    const w = W();
+    const nextX = dir === 'left' ? currentX + w : currentX - w;
 
-  // Sync pagine quando pathname cambia da Link/router
-  useEffect(() => {
-    const currentPage = pages[activeIdx];
-    if (currentPage?.pathname === pathname) {
-      // Aggiorna solo il contenuto
-      setPages(prev => prev.map((p, i) =>
-        i === activeIdx ? { ...p, content: children } : p
-      ));
-      return;
+    const currentPanel = containerRef.current?.querySelector('[data-panel="current"]') as HTMLElement;
+    const nextPanel = containerRef.current?.querySelector('[data-panel="next"]') as HTMLElement;
+
+    if (!currentPanel) return;
+
+    const distCurrent = Math.abs(currentX / w);
+    const distNext = Math.abs(nextX / w);
+
+    const scaleCurrent = 1 - Math.min(distCurrent, 1) * 0.06;
+    const scaleNext = 1 - Math.min(distNext, 1) * 0.06;
+    const opacityCurrent = 1 - Math.min(distCurrent, 1) * 0.2;
+    const opacityNext = 1 - Math.min(distNext, 1) * 0.2;
+
+    currentPanel.style.transform = `translate3d(${currentX}px, 0, 0) scale(${scaleCurrent})`;
+    currentPanel.style.opacity = String(opacityCurrent);
+
+    if (nextPanel) {
+      nextPanel.style.transform = `translate3d(${nextX}px, 0, 0) scale(${scaleNext})`;
+      nextPanel.style.opacity = String(opacityNext);
     }
 
-    const newPageIdx = getPageIndex(pathname);
-    const currentPageIdx = getPageIndex(currentPage?.pathname || '/');
-    const goingRight = newPageIdx > currentPageIdx;
+    currentXRef.current = currentX;
+  };
 
-    // Aggiungi nuova pagina
-    const newPage: PageState = {
-      content: children,
-      index: newPageIdx,
-      pathname,
-    };
-
-    if (goingRight) {
-      // Nuova pagina a destra
-      setPages(prev => {
-        const next = [...prev, newPage];
-        const newActiveIdx = next.length - 1;
-        animateTo(-widthRef.current, newActiveIdx, next);
-        return next;
-      });
-    } else {
-      // Nuova pagina a sinistra
-      setPages(prev => {
-        const next = [newPage, ...prev];
-        // Sposta offset per non fare salto visivo
-        offsetRef.current -= widthRef.current;
-        applyTransforms(offsetRef.current, next, 0);
-        animateTo(0, 0, next);
-        return next;
-      });
-    }
-  }, [pathname, children]);
-
-  // Applica transforms a tutti i pannelli
-  const applyTransforms = useCallback((
-    offset: number,
-    pagesArr: PageState[],
-    newActiveIdx?: number
-  ) => {
-    const W = widthRef.current;
-    const active = newActiveIdx ?? activeIdx;
-
-    pagesArr.forEach((_, i) => {
-      const panel = panelRefs.current[i];
-      if (!panel) return;
-
-      // Posizione base del pannello
-      const baseX = (i - active) * W;
-      const x = baseX + offset;
-
-      // Normalizza distanza dal centro [-1, 1]
-      const dist = Math.abs(x / W);
-      const clampedDist = Math.min(dist, 1);
-
-      // Scale: centro=1, lati=0.92
-      const scale = 1 - clampedDist * 0.08;
-
-      // Opacity: centro=1, lati=0.75
-      const opacity = 1 - clampedDist * 0.25;
-
-      // Parallasse leggero per pannelli non attivi
-      const parallaxX = i !== active ? x * 0.12 : 0;
-
-      panel.style.transform = `translate3d(${x + parallaxX}px, 0, 0) scale(${scale})`;
-      panel.style.opacity = String(opacity);
-      panel.style.zIndex = i === active ? '2' : '1';
-    });
-  }, [activeIdx]);
-
-  // Animazione spring verso target
-  const animateTo = useCallback((
-    targetOffset: number,
-    newActiveIdx: number,
-    pagesArr?: PageState[]
-  ) => {
-    const pgs = pagesArr || pages;
-    targetOffsetRef.current = targetOffset;
-    isAnimatingRef.current = true;
-
-    cancelAnimationFrame(animRef.current);
-
-    // Spring params
-    const stiffness = 280;
-    const damping = 28;
+  // Spring animation
+  const springTo = useCallback((target: number, dir: 'left' | 'right', onDone?: () => void) => {
+    const stiffness = 320;
+    const damping = 30;
     const mass = 1;
+    let vel = drag.current.velocity * 80;
+    let pos = currentXRef.current;
 
-    let velocity = dragRef.current.velocity * 0.3; // eredita velocità dal drag
-    let position = offsetRef.current;
+    cancelAnimationFrame(rafRef.current);
 
     const step = () => {
-      const force = -stiffness * (position - targetOffset);
-      const dampingForce = -damping * velocity;
-      const acceleration = (force + dampingForce) / mass;
+      const force = -stiffness * (pos - target);
+      const damp = -damping * vel;
+      vel += ((force + damp) / mass) * (1 / 60);
+      pos += vel * (1 / 60);
 
-      velocity += acceleration * (1 / 60);
-      position += velocity * (1 / 60);
+      setPanelX(pos, dir);
 
-      // Convergenza
-      const diff = Math.abs(position - targetOffset);
-      const velAbs = Math.abs(velocity);
-
-      if (diff < 0.5 && velAbs < 0.5) {
-        position = targetOffset;
-        isAnimatingRef.current = false;
-        offsetRef.current = 0;
-
-        // Cleanup: rimuovi pagine non necessarie
-        setActiveIdx(newActiveIdx);
-        setPages(prev => {
-          const cleaned = prev.filter((_, i) => i === newActiveIdx);
-          return [{ ...prev[newActiveIdx] }];
-        });
+      if (Math.abs(pos - target) < 0.3 && Math.abs(vel) < 0.3) {
+        setPanelX(target, dir);
+        onDone?.();
         return;
       }
 
-      offsetRef.current = position;
-      applyTransforms(position, pgs, newActiveIdx);
-      animRef.current = requestAnimationFrame(step);
+      rafRef.current = requestAnimationFrame(step);
     };
 
-    animRef.current = requestAnimationFrame(step);
-  }, [pages, applyTransforms]);
+    rafRef.current = requestAnimationFrame(step);
+  }, []);
+
+  // Quando pathname cambia da Link click
+  useEffect(() => {
+    if (pathname === prevPathname.current) {
+      // Aggiorna solo contenuto corrente
+      setSnapshot(s => ({ ...s, current: children }));
+      prevChildren.current = children;
+      return;
+    }
+
+    // Non fare niente se stiamo già draggando (gestito dal pointer up)
+    if (isDraggingRef.current) return;
+
+    const prevIdx = getPageIndex(prevPathname.current);
+    const nextIdx = getPageIndex(pathname);
+    const dir = nextIdx >= prevIdx ? 'left' : 'right';
+    const w = W();
+
+    // Mostra subito next fuori schermo
+    setSnapshot({
+      current: prevChildren.current,
+      next: children,
+      direction: dir,
+      phase: 'animating',
+    });
+
+    currentXRef.current = 0;
+
+    // Anima dopo render
+    setTimeout(() => {
+      const target = dir === 'left' ? -w : w;
+      springTo(target, dir, () => {
+        prevPathname.current = pathname;
+        prevChildren.current = children;
+        currentXRef.current = 0;
+        setSnapshot({
+          current: children,
+          next: null,
+          direction: dir,
+          phase: 'idle',
+        });
+      });
+    }, 16);
+  }, [pathname, children, springTo]);
 
   // POINTER EVENTS
   const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if (isAnimatingRef.current) return;
-    // Ignora se viene da input, button, select, ecc.
     const target = e.target as HTMLElement;
     if (target.closest('button, a, input, select, textarea, [data-no-swipe]')) return;
+    if (snapshot.phase === 'animating') return;
 
-    dragRef.current = {
+    drag.current = {
       active: true,
       startX: e.clientX,
       startY: e.clientY,
-      currentX: e.clientX,
+      dx: 0,
       lastX: e.clientX,
       lastTime: Date.now(),
       velocity: 0,
+      locked: false,
       isHorizontal: false,
-      directionLocked: false,
     };
 
     containerRef.current?.setPointerCapture(e.pointerId);
-  }, []);
+  }, [snapshot.phase]);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    if (!drag.active) return;
+    if (!drag.current.active) return;
 
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
+    const dx = e.clientX - drag.current.startX;
+    const dy = e.clientY - drag.current.startY;
 
-    // Lock direzione dopo 8px
-    if (!drag.directionLocked && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-      drag.isHorizontal = Math.abs(dx) > Math.abs(dy);
-      drag.directionLocked = true;
+    if (!drag.current.locked) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      drag.current.isHorizontal = Math.abs(dx) > Math.abs(dy);
+      drag.current.locked = true;
     }
 
-    if (!drag.isHorizontal) return;
-
+    if (!drag.current.isHorizontal) return;
     e.preventDefault();
 
-    // Velocità istantanea
+    // Velocità
     const now = Date.now();
-    const dt = now - drag.lastTime;
-    if (dt > 0) {
-      drag.velocity = (e.clientX - drag.lastX) / dt;
-    }
-    drag.lastX = e.clientX;
-    drag.lastTime = now;
-    drag.currentX = e.clientX;
+    const dt = now - drag.current.lastTime;
+    if (dt > 0) drag.current.velocity = (e.clientX - drag.current.lastX) / dt;
+    drag.current.lastX = e.clientX;
+    drag.current.lastTime = now;
+    drag.current.dx = dx;
 
-    const offset = dx;
-    offsetRef.current = offset;
-    applyTransforms(offset, pages, activeIdx);
-  }, [pages, activeIdx, applyTransforms]);
+    const currentPageIdx = getPageIndex(pathname);
+    const canGoLeft = currentPageIdx < PAGE_ORDER.length - 1;
+    const canGoRight = currentPageIdx > 0;
+
+    // Resistenza se non c'è pagina in quella direzione
+    let offset = dx;
+    if (dx < 0 && !canGoLeft) offset = dx * 0.2;
+    if (dx > 0 && !canGoRight) offset = dx * 0.2;
+
+    // Mostra next page se inizia drag
+    if (!snapshot.next && Math.abs(dx) > 10) {
+      const dir = dx < 0 ? 'left' : 'right';
+      if ((dir === 'left' && canGoLeft) || (dir === 'right' && canGoRight)) {
+        const nextPath = dir === 'left'
+          ? PAGE_ORDER[currentPageIdx + 1]
+          : PAGE_ORDER[currentPageIdx - 1];
+
+        isDraggingRef.current = true;
+        router.prefetch(nextPath);
+      }
+    }
+
+    setPanelX(offset, dx < 0 ? 'left' : 'right');
+  }, [pathname, snapshot.next, router]);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    if (!drag.active) return;
-    drag.active = false;
+    if (!drag.current.active) return;
+    drag.current.active = false;
+    isDraggingRef.current = false;
 
-    const dx = drag.currentX - drag.startX;
-    const W = widthRef.current;
-    const velocity = drag.velocity;
-    const currentPageOrder = PAGE_ORDER.indexOf('/' + pathname.split('/')[1]);
+    const { dx, velocity } = drag.current;
+    const w = W();
+    const currentPageIdx = getPageIndex(pathname);
 
-    // Soglie
-    const distThreshold = W * 0.25;
-    const velThreshold = 0.4;
+    const distThreshold = w * 0.28;
+    const velThreshold = 0.35;
 
-    const shouldGoNext = dx < -distThreshold || velocity < -velThreshold;
-    const shouldGoPrev = dx > distThreshold || velocity > velThreshold;
+    const shouldGoLeft = (dx < -distThreshold || velocity < -velThreshold) && currentPageIdx < PAGE_ORDER.length - 1;
+    const shouldGoRight = (dx > distThreshold || velocity > velThreshold) && currentPageIdx > 0;
 
-    if (shouldGoNext && currentPageOrder < PAGE_ORDER.length - 1) {
-      // Vai alla pagina successiva
-      const nextPath = PAGE_ORDER[currentPageOrder + 1];
-      router.push(nextPath);
-    } else if (shouldGoPrev && currentPageOrder > 0) {
-      // Vai alla pagina precedente
-      const prevPath = PAGE_ORDER[currentPageOrder - 1];
-      router.push(prevPath);
+    if (shouldGoLeft) {
+      const nextPath = PAGE_ORDER[currentPageIdx + 1];
+      const target = -w;
+
+      setSnapshot(s => ({
+        ...s,
+        next: s.next,
+        direction: 'left',
+        phase: 'animating',
+      }));
+
+      springTo(target, 'left', () => {
+        router.push(nextPath);
+      });
+
+    } else if (shouldGoRight) {
+      const prevPath = PAGE_ORDER[currentPageIdx - 1];
+      const target = w;
+
+      setSnapshot(s => ({
+        ...s,
+        direction: 'right',
+        phase: 'animating',
+      }));
+
+      springTo(target, 'right', () => {
+        router.push(prevPath);
+      });
+
     } else {
-      // Snap back
-      dragRef.current.velocity = velocity * 1000;
-      animateTo(0, activeIdx);
+      // Snap back con spring
+      springTo(0, dx < 0 ? 'left' : 'right', () => {
+        setSnapshot(s => ({ ...s, next: null, phase: 'idle' }));
+      });
     }
-  }, [pathname, router, activeIdx, animateTo]);
+  }, [pathname, router, springTo]);
 
-  // Applica transform iniziale
-  useEffect(() => {
-    applyTransforms(offsetRef.current, pages, activeIdx);
-  }, [pages, activeIdx]);
+  const w = W();
+  const nextStartX = snapshot.direction === 'left' ? w : -w;
 
   return (
     <div
@@ -294,30 +288,48 @@ export default function PageTransition({ children }: { children: React.ReactNode
         minHeight: '100vh',
         touchAction: 'pan-y',
         userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {pages.map((page, i) => (
+      {/* Pannello corrente */}
+      <div
+        data-panel="current"
+        style={{
+          position: 'relative',
+          width: '100%',
+          minHeight: '100vh',
+          willChange: 'transform, opacity',
+          transformOrigin: 'center center',
+          zIndex: 2,
+        }}
+      >
+        {snapshot.current}
+      </div>
+
+      {/* Pannello prossimo — fuori schermo */}
+      {snapshot.next && (
         <div
-          key={page.pathname + i}
-          ref={el => { panelRefs.current[i] = el; }}
+          data-panel="next"
           style={{
-            position: i === activeIdx ? 'relative' : 'absolute',
+            position: 'absolute',
             top: 0,
             left: 0,
             width: '100%',
             minHeight: '100vh',
+            transform: `translate3d(${nextStartX}px, 0, 0) scale(0.94)`,
+            opacity: 0.8,
             willChange: 'transform, opacity',
             transformOrigin: 'center center',
-            backfaceVisibility: 'hidden',
+            zIndex: 1,
           }}
         >
-          {page.content}
+          {snapshot.next}
         </div>
-      ))}
+      )}
     </div>
   );
 }
