@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 
 type Fase = 'entrata' | 'visibile' | 'uscita' | 'finito';
 
@@ -9,8 +10,9 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     const t1 = setTimeout(() => setFase('visibile'), 100);
-    const t2 = setTimeout(() => setFase('uscita'), 2400);
-    const t3 = setTimeout(() => setFase('finito'), 3600);
+    const t2 = setTimeout(() => setFase('uscita'), 2600);
+    const t3 = setTimeout(() => setFase('finito'), 3800);
+
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -21,142 +23,220 @@ export default function LoadingScreen() {
   if (fase === 'finito') return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] overflow-hidden"
-      style={{ pointerEvents: fase === 'uscita' ? 'none' : 'all' }}
-    >
-      {/* Onda principale */}
+    <div className="wrapper">
+      
+      {/* ONDA */}
       <div
+        className="waveContainer"
         style={{
-          position: 'absolute',
-          left: '-5%',
-          right: '-5%',
-          height: '200vh',
-          top: fase === 'entrata'
-            ? '-200vh'
-            : fase === 'uscita'
-            ? '-200vh'
-            : '-10vh',
-          transition: fase === 'entrata'
-            ? 'top 1.3s cubic-bezier(0.16, 1, 0.3, 1)'
-            : fase === 'uscita'
-            ? 'top 1.3s cubic-bezier(0.7, 0, 0.84, 0) 0.1s'
-            : 'none',
-          background:
-            'linear-gradient(180deg, #001220 0%, #003d5c 20%, #006994 50%, #0099cc 75%, #00b4e6 100%)',
-          zIndex: 2,
+          top:
+            fase === 'entrata'
+              ? '-200vh'
+              : fase === 'uscita'
+              ? '-200vh'
+              : '-20vh',
         }}
       >
-        {/* Bordo onda superiore */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60px' }}>
-          <svg viewBox="0 0 1440 60" preserveAspectRatio="none"
-            style={{ width: '100%', height: '100%' }}>
-            <path
-              d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,15 1440,30 L1440,0 L0,0 Z"
-              fill="#001220"
-            />
-          </svg>
-        </div>
+        {/* SFONDO */}
+        <div className="gradient" />
 
-        {/* Bordo onda inferiore */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px' }}>
-          <svg viewBox="0 0 1440 80" preserveAspectRatio="none"
-            style={{ width: '100%', height: '100%' }}>
-            <path
-              d="M0,40 C180,80 360,0 540,40 C720,80 900,0 1080,40 C1260,80 1380,20 1440,40 L1440,80 L0,80 Z"
-              fill="#0a0a0a"
-            />
-          </svg>
-        </div>
+        {/* ONDA ANIMATA */}
+        <svg
+          className="waveSvg"
+          viewBox="0 0 1440 200"
+          preserveAspectRatio="none"
+        >
+          <path
+            className="wavePath"
+            d="M0,100 C240,140 480,60 720,100 C960,140 1200,60 1440,100 L1440,0 L0,0 Z"
+          />
+        </svg>
 
-        {/* Bolle */}
+        {/* BOLLE */}
         {[...Array(8)].map((_, i) => (
-          <div key={i} style={{
-            position: 'absolute',
-            width: `${8 + (i % 3) * 10}px`,
-            height: `${8 + (i % 3) * 10}px`,
-            borderRadius: '50%',
-            backgroundColor: 'rgba(255,255,255,0.06)',
-            left: `${8 + i * 11}%`,
-            top: `${20 + (i % 4) * 12}%`,
-            animation: `bubble ${2 + i * 0.25}s ease-in-out infinite`,
-            animationDelay: `${i * 0.15}s`,
-          }} />
+          <div
+            key={i}
+            className="bubble"
+            style={{
+              width: `${8 + (i % 3) * 10}px`,
+              height: `${8 + (i % 3) * 10}px`,
+              left: `${8 + i * 11}%`,
+              top: `${20 + (i % 4) * 12}%`,
+              animationDuration: `${2 + i * 0.25}s`,
+              animationDelay: `${i * 0.15}s`,
+            }}
+          />
         ))}
-
-        {/* CONTENUTO — perfettamente centrato */}
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '20px',
-          width: '100%',
-          opacity: fase === 'visibile' ? 1 : 0,
-          transition: 'opacity 0.6s ease',
-        }}>
-          {/* Logo */}
-          <div style={{
-            animation: fase === 'visibile' ? 'floatLogo 3s ease-in-out infinite' : 'none',
-            filter: 'drop-shadow(0 0 25px rgba(201,168,76,0.3))',
-          }}>
-            <img
-              src="/Logo_del_Lido_Arcobaleno.png"
-              alt="Lido Arcobaleno Gate 1"
-              style={{ width: '230px', objectFit: 'contain' }}
-            />
-          </div>
-
-          {/* Separatore oro */}
-          <div style={{
-            width: '80px',
-            height: '1px',
-            background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.8), transparent)',
-          }} />
-
-          {/* Dots */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} style={{
-                width: i === 2 ? '8px' : '5px',
-                height: i === 2 ? '8px' : '5px',
-                borderRadius: '50%',
-                backgroundColor: '#c9a84c',
-                animation: `dotWave 1.2s ease-in-out infinite`,
-                animationDelay: `${i * 0.12}s`,
-                opacity: 0.8,
-              }} />
-            ))}
-          </div>
-
-          {/* Benvenuto */}
-          <p style={{
-            color: 'rgba(201,168,76,0.55)',
-            fontSize: '0.68rem',
-            letterSpacing: '0.45em',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-          }}>
-            Benvenuto
-          </p>
-        </div>
       </div>
 
-      <style>{`
+      {/* CONTENUTO CENTRALE (SEPARATO → NON SI MUOVE) */}
+      <div
+        className={`centerContent ${
+          fase === 'visibile' ? 'visible' : ''
+        }`}
+      >
+        <div className="logoFloat">
+          <Image
+            src="/Logo_del_Lido_Arcobaleno.png"
+            alt="Lido Arcobaleno Gate 1"
+            width={230}
+            height={230}
+            priority
+          />
+        </div>
+
+        <div className="goldLine" />
+
+        <div className="dots">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="dot" style={{ animationDelay: `${i * 0.12}s` }} />
+          ))}
+        </div>
+
+        <p className="welcomeText">Benvenuto</p>
+      </div>
+
+      {/* STILI */}
+      <style jsx>{`
+        .wrapper {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          overflow: hidden;
+        }
+
+        /* ONDA */
+        .waveContainer {
+          position: absolute;
+          left: -5%;
+          right: -5%;
+          height: 200vh;
+          transition: top 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .gradient {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            180deg,
+            #001220 0%,
+            #003d5c 25%,
+            #006994 60%,
+            #00b4e6 100%
+          );
+        }
+
+        .waveSvg {
+          position: absolute;
+          top: 0;
+          width: 100%;
+          height: 200px;
+        }
+
+        .wavePath {
+          fill: #001220;
+          animation: waveMove 6s ease-in-out infinite;
+        }
+
+        /* CENTRO PERFETTO */
+        .centerContent {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) scale(0.95);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 20px;
+          opacity: 0;
+          transition: all 0.8s ease;
+          z-index: 10;
+        }
+
+        .centerContent.visible {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* LOGO */
+        .logoFloat {
+          animation: floatLogo 3.5s ease-in-out infinite;
+          filter: drop-shadow(0 0 25px rgba(201,168,76,0.3));
+        }
+
+        /* LINEA */
+        .goldLine {
+          width: 80px;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(201, 168, 76, 0.8),
+            transparent
+          );
+        }
+
+        /* DOTS */
+        .dots {
+          display: flex;
+          gap: 8px;
+        }
+
+        .dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background-color: #c9a84c;
+          animation: dotWave 1.2s ease-in-out infinite;
+        }
+
+        .dot:nth-child(3) {
+          width: 7px;
+          height: 7px;
+        }
+
+        /* TESTO */
+        .welcomeText {
+          color: rgba(201, 168, 76, 0.5);
+          font-size: 0.68rem;
+          letter-spacing: 0.4em;
+          font-weight: 700;
+        }
+
+        /* BOLLE */
+        .bubble {
+          position: absolute;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.05);
+          animation: bubble 3s ease-in-out infinite;
+        }
+
+        /* ANIMAZIONI */
+
+        @keyframes waveMove {
+          0% {
+            d: path("M0,100 C240,140 480,60 720,100 C960,140 1200,60 1440,100 L1440,0 L0,0 Z");
+          }
+          50% {
+            d: path("M0,100 C240,60 480,140 720,100 C960,60 1200,140 1440,100 L1440,0 L0,0 Z");
+          }
+          100% {
+            d: path("M0,100 C240,140 480,60 720,100 C960,140 1200,60 1440,100 L1440,0 L0,0 Z");
+          }
+        }
+
         @keyframes bubble {
-          0%, 100% { transform: translateY(0) scale(1); opacity: 0.06; }
-          50% { transform: translateY(-18px) scale(1.08); opacity: 0.12; }
+          0%,100% { transform: translateY(0); opacity: 0.05; }
+          50% { transform: translateY(-20px); opacity: 0.12; }
         }
+
         @keyframes floatLogo {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
+          0%,100% { transform: translateY(0); }
+          50% { transform: translateY(-12px); }
         }
+
         @keyframes dotWave {
-          0%, 100% { transform: translateY(0); opacity: 0.4; }
+          0%,100% { transform: translateY(0); opacity: 0.3; }
           50% { transform: translateY(-7px); opacity: 1; }
         }
       `}</style>
