@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Ombrellone } from '@/types';
+import type { Ombrellone, FasciaOraria } from '@/types';
 
 interface OmbrelloneSelezionato {
   ombrellone: Ombrellone;
@@ -11,11 +11,12 @@ interface OmbrelloneSelezionato {
 const PREZZO_LETTINO_EXTRA = 5.00;
 const MAX_LETTINI = 3;
 
-// Posizioni ombrelloni sulla foto reale (percentuali x,y rispetto all'immagine)
-// Zona A — ombrelloni bianchi sinistra (file diagonali vicino mare)
-// Zona B — ombrelloni bianchi centro
-// Zona C — ombrelloni blu destra
-// Zona D — ombrelloni paglia in basso
+const FASCE: { id: FasciaOraria; label: string; orario: string; emoji: string }[] = [
+  { id: 'mattina',   label: 'Mattina',        orario: '08:00 - 14:00', emoji: '🌅' },
+  { id: 'pomeriggio',label: 'Pomeriggio',     orario: '14:00 - 20:00', emoji: '🌤️' },
+  { id: 'giornata',  label: 'Giornata intera',orario: '08:00 - 20:00', emoji: '☀️' },
+];
+
 const OMBRELLONI_LAYOUT = [
   // ZONA A — file diagonali sinistra vicino mare
   { codice: 'A1',  x: 7,  y: 12, zona: 'A' },
@@ -33,8 +34,7 @@ const OMBRELLONI_LAYOUT = [
   { codice: 'A13', x: 7,  y: 44, zona: 'A' },
   { codice: 'A14', x: 14, y: 44, zona: 'A' },
   { codice: 'A15', x: 21, y: 44, zona: 'A' },
-
-  // ZONA B — centro sinistra bianchi
+  // ZONA B — centro
   { codice: 'B1',  x: 30, y: 12, zona: 'B' },
   { codice: 'B2',  x: 37, y: 12, zona: 'B' },
   { codice: 'B3',  x: 44, y: 12, zona: 'B' },
@@ -50,8 +50,7 @@ const OMBRELLONI_LAYOUT = [
   { codice: 'B13', x: 30, y: 44, zona: 'B' },
   { codice: 'B14', x: 37, y: 44, zona: 'B' },
   { codice: 'B15', x: 44, y: 44, zona: 'B' },
-
-  // ZONA C — destra bianchi e blu
+  // ZONA C — destra
   { codice: 'C1',  x: 55, y: 12, zona: 'C' },
   { codice: 'C2',  x: 62, y: 12, zona: 'C' },
   { codice: 'C3',  x: 69, y: 12, zona: 'C' },
@@ -82,8 +81,7 @@ const OMBRELLONI_LAYOUT = [
   { codice: 'C28', x: 76, y: 44, zona: 'C' },
   { codice: 'C29', x: 83, y: 44, zona: 'C' },
   { codice: 'C30', x: 90, y: 44, zona: 'C' },
-
-  // ZONA D — paglia basso destra
+  // ZONA D — paglia
   { codice: 'D1',  x: 63, y: 70, zona: 'D' },
   { codice: 'D2',  x: 70, y: 70, zona: 'D' },
   { codice: 'D3',  x: 77, y: 70, zona: 'D' },
@@ -101,12 +99,47 @@ const OMBRELLONI_LAYOUT = [
   { codice: 'D15', x: 91, y: 86, zona: 'D' },
 ];
 
+// Tema colori in base all'ora del giorno
+function getTheme() {
+  const ora = new Date().getHours();
+  if (ora >= 6 && ora < 10) {
+    // Alba
+    return {
+      bg: 'linear-gradient(180deg, #1a0a00 0%, #3d1f00 30%, #7a3500 60%, #c4622d 100%)',
+      accent: '#f97316',
+      label: '🌅 Alba',
+    };
+  } else if (ora >= 10 && ora < 16) {
+    // Giorno
+    return {
+      bg: 'linear-gradient(180deg, #001a2e 0%, #003d5c 40%, #0a0a0a 100%)',
+      accent: '#0099cc',
+      label: '☀️ Giorno',
+    };
+  } else if (ora >= 16 && ora < 20) {
+    // Tramonto
+    return {
+      bg: 'linear-gradient(180deg, #1a0800 0%, #4a1a00 30%, #8B3500 60%, #c9a84c 100%)',
+      accent: '#c9a84c',
+      label: '🌅 Tramonto',
+    };
+  } else {
+    // Notte
+    return {
+      bg: 'linear-gradient(180deg, #000510 0%, #001020 40%, #0a0a0a 100%)',
+      accent: '#c9a84c',
+      label: '🌙 Sera',
+    };
+  }
+}
+
 export default function PrenotaPage() {
   const [data, setData] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return d.toISOString().split('T')[0];
   });
+  const [fascia, setFascia] = useState<FasciaOraria>('giornata');
   const [ombrelloniDB, setOmbrelloniDB] = useState<Ombrellone[]>([]);
   const [selezionati, setSelezionati] = useState<OmbrelloneSelezionato[]>([]);
   const [loading, setLoading] = useState(false);
@@ -115,6 +148,7 @@ export default function PrenotaPage() {
   const [email, setEmail] = useState('');
   const [errore, setErrore] = useState('');
   const [tooltip, setTooltip] = useState<{ codice: string; prezzo: number; stato: string } | null>(null);
+  const theme = getTheme();
 
   useEffect(() => {
     if (!data) return;
@@ -122,7 +156,7 @@ export default function PrenotaPage() {
     setLoadingMap(true);
     async function caricaDisponibilita() {
       try {
-        const res = await fetch(`/api/disponibilita?data=${data}`);
+        const res = await fetch(`/api/disponibilita?data=${data}&fascia=${fascia}`);
         const json = await res.json();
         setOmbrelloniDB(json.ombrelloni);
       } catch {
@@ -132,7 +166,7 @@ export default function PrenotaPage() {
       }
     }
     caricaDisponibilita();
-  }, [data]);
+  }, [data, fascia]);
 
   function getStatoOmbrellone(codice: string) {
     if (selezionati.find((s) => s.ombrellone.codice === codice)) return 'selezionato';
@@ -142,6 +176,12 @@ export default function PrenotaPage() {
 
   function getOmbrelloneDB(codice: string) {
     return ombrelloniDB.find((o) => o.codice === codice);
+  }
+
+  function getPrezzoFascia(o: Ombrellone) {
+    if (fascia === 'mattina') return o.prezzo_mattina || o.prezzo;
+    if (fascia === 'pomeriggio') return o.prezzo_pomeriggio || o.prezzo;
+    return o.prezzo_giornata || o.prezzo;
   }
 
   function handleClickOmbrellone(codice: string) {
@@ -167,8 +207,9 @@ export default function PrenotaPage() {
   }
 
   function calcolaPrezzoOmbrellone(s: OmbrelloneSelezionato) {
+    const base = getPrezzoFascia(s.ombrellone);
     const extra = Math.max(0, s.lettini - 2) * PREZZO_LETTINO_EXTRA;
-    return s.ombrellone.prezzo + extra;
+    return base + extra;
   }
 
   function calcolaTotale() {
@@ -190,6 +231,7 @@ export default function PrenotaPage() {
           body: JSON.stringify({
             ombrellone_id: s.ombrellone.id,
             data,
+            fascia,
             nome_cliente: nome,
             email_cliente: email || null,
             lettini: s.lettini,
@@ -212,7 +254,7 @@ export default function PrenotaPage() {
           riferimento_id: prenotazioneIds[0],
           riferimento_ids: prenotazioneIds,
           items: selezionati.map((s) => ({
-            nome: `Ombrellone ${s.ombrellone.codice} (${s.lettini} lettini) — ${data}`,
+            nome: `Ombrellone ${s.ombrellone.codice} — ${FASCE.find(f => f.id === fascia)?.label} (${s.lettini} lettini)`,
             prezzo: calcolaPrezzoOmbrellone(s),
             qty: 1,
           })),
@@ -231,7 +273,6 @@ export default function PrenotaPage() {
 
   const oggi = new Date().toISOString().split('T')[0];
 
-  // Colori per stato
   const COLORI_STATO = {
     disponibile: { fill: 'rgba(255,255,255,0.9)', stroke: '#c9a84c', text: '#0a0a0a', glow: 'rgba(201,168,76,0.6)' },
     occupato:    { fill: 'rgba(255,59,48,0.85)',  stroke: '#ff3b30', text: '#ffffff', glow: 'rgba(255,59,48,0.6)' },
@@ -243,13 +284,13 @@ export default function PrenotaPage() {
     <div style={{ backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
       <div style={{ height: '54px' }} />
 
-      {/* Header */}
-      <div className="px-5 py-4" style={{ borderBottom: '1px solid #2a2a2a' }}>
+      {/* Header con tema orario */}
+      <div style={{ background: theme.bg, padding: '16px 20px 24px' }}>
         <h1 className="text-2xl font-black" style={{ color: '#c9a84c' }}>
           Prenota Ombrellone
         </h1>
-        <p style={{ color: '#666', fontSize: '0.8rem' }}>
-          Tocca gli ombrelloni sulla mappa per selezionarli
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>
+          {theme.label} — Tocca gli ombrelloni per selezionarli
         </p>
       </div>
 
@@ -271,12 +312,41 @@ export default function PrenotaPage() {
           />
         </div>
 
+        {/* Fascia oraria */}
+        <div className="rounded-2xl p-4"
+          style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+          <label className="block text-sm font-bold mb-3" style={{ color: '#c9a84c' }}>
+            🕐 Seleziona la fascia oraria
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {FASCE.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFascia(f.id)}
+                className="p-3 rounded-xl flex flex-col items-center gap-1 transition-all"
+                style={{
+                  border: fascia === f.id ? `2px solid ${theme.accent}` : '2px solid #2a2a2a',
+                  backgroundColor: fascia === f.id ? `rgba(201,168,76,0.1)` : '#2a2a2a',
+                }}>
+                <span className="text-xl">{f.emoji}</span>
+                <span className="text-xs font-bold"
+                  style={{ color: fascia === f.id ? '#c9a84c' : '#666' }}>
+                  {f.label}
+                </span>
+                <span style={{ fontSize: '0.6rem', color: fascia === f.id ? '#c9a84c' : '#444' }}>
+                  {f.orario}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Legenda */}
         <div className="flex gap-3 flex-wrap px-1">
           {Object.entries(COLORI_STATO).map(([stato, c]) => (
             <div key={stato} className="flex items-center gap-1.5">
               <div style={{
-                width: '14px', height: '14px', borderRadius: '50%',
+                width: '12px', height: '12px', borderRadius: '50%',
                 backgroundColor: c.fill, border: `2px solid ${c.stroke}`,
               }} />
               <span style={{ fontSize: '0.68rem', color: '#666', fontWeight: 600 }}>
@@ -286,10 +356,9 @@ export default function PrenotaPage() {
           ))}
         </div>
 
-        {/* MAPPA CON FOTO REALE */}
+        {/* Mappa */}
         <div className="rounded-2xl overflow-hidden"
           style={{ border: '1px solid #2a2a2a', position: 'relative' }}>
-
           {loadingMap ? (
             <div className="flex items-center justify-center"
               style={{ height: '400px', backgroundColor: '#1a1a1a' }}>
@@ -301,103 +370,53 @@ export default function PrenotaPage() {
             </div>
           ) : (
             <div style={{ position: 'relative', width: '100%' }}>
-              {/* Foto reale del lido */}
               <img
                 src="/sfondo_gate1.png"
                 alt="Lido Arcobaleno Gate 1"
-                style={{
-                  width: '100%',
-                  display: 'block',
-                  opacity: 0.85,
-                }}
+                style={{ width: '100%', display: 'block', opacity: 0.85 }}
               />
-
-              {/* Overlay scuro per leggibilità */}
               <div style={{
-                position: 'absolute',
-                inset: 0,
+                position: 'absolute', inset: 0,
                 background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.2) 100%)',
                 pointerEvents: 'none',
               }} />
 
-              {/* Ombrelloni interattivi sovrapposti */}
-              <svg
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                }}
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
+              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+                viewBox="0 0 100 100" preserveAspectRatio="none">
                 {OMBRELLONI_LAYOUT.map((layout) => {
                   const stato = getStatoOmbrellone(layout.codice);
                   const c = COLORI_STATO[stato as keyof typeof COLORI_STATO] || COLORI_STATO.disponibile;
                   const isSelezionabile = stato !== 'occupato' && stato !== 'bloccato';
                   const isSelezionato = stato === 'selezionato';
-                  const isDisponibile = stato === 'disponibile';
                   const { x, y } = layout;
 
                   return (
-                    <g
-                      key={layout.codice}
+                    <g key={layout.codice}
                       onClick={() => handleClickOmbrellone(layout.codice)}
                       onMouseEnter={() => {
                         const dbOm = getOmbrelloneDB(layout.codice);
-                        if (dbOm) setTooltip({ codice: layout.codice, prezzo: dbOm.prezzo, stato });
+                        if (dbOm) setTooltip({ codice: layout.codice, prezzo: getPrezzoFascia(dbOm), stato });
                       }}
                       onMouseLeave={() => setTooltip(null)}
-                      style={{ cursor: isSelezionabile ? 'pointer' : 'not-allowed' }}
-                    >
-                      {/* Glow effect */}
-                      {(isSelezionato || !isDisponibile) && (
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r="3.5"
-                          fill={c.glow}
-                          opacity="0.3"
-                          style={{ filter: 'blur(1px)' }}
-                        />
+                      style={{ cursor: isSelezionabile ? 'pointer' : 'not-allowed' }}>
+
+                      {(isSelezionato || stato !== 'disponibile') && (
+                        <circle cx={x} cy={y} r="3.5" fill={c.glow} opacity="0.3" />
                       )}
 
-                      {/* Cerchio principale ombrellone */}
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r={isSelezionato ? "3" : "2.5"}
-                        fill={c.fill}
-                        stroke={c.stroke}
+                      <circle cx={x} cy={y} r={isSelezionato ? "3" : "2.5"}
+                        fill={c.fill} stroke={c.stroke}
                         strokeWidth={isSelezionato ? "0.8" : "0.5"}
-                        style={{
-                          transition: 'all 0.3s ease',
-                          filter: isSelezionato ? `drop-shadow(0 0 2px ${c.stroke})` : 'none',
-                        }}
-                      />
+                        style={{ transition: 'all 0.3s ease' }} />
 
-                      {/* Icona ombrellone dentro il cerchio */}
-                      {isDisponibile ? (
-                        /* Chiuso — linea verticale */
-                        <line
-                          x1={x} y1={y - 1.5}
-                          x2={x} y2={y + 1.5}
-                          stroke={c.stroke}
-                          strokeWidth="0.6"
-                          strokeLinecap="round"
-                        />
+                      {stato === 'disponibile' ? (
+                        <line x1={x} y1={y - 1.5} x2={x} y2={y + 1.5}
+                          stroke={c.stroke} strokeWidth="0.6" strokeLinecap="round" />
                       ) : isSelezionato ? (
-                        /* Selezionato — checkmark */
-                        <path
-                          d={`M ${x - 1.2} ${y} L ${x - 0.3} ${y + 0.9} L ${x + 1.2} ${y - 0.8}`}
-                          fill="none"
-                          stroke="white"
-                          strokeWidth="0.7"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+                        <path d={`M ${x - 1.2} ${y} L ${x - 0.3} ${y + 0.9} L ${x + 1.2} ${y - 0.8}`}
+                          fill="none" stroke="white" strokeWidth="0.7"
+                          strokeLinecap="round" strokeLinejoin="round" />
                       ) : stato === 'occupato' ? (
-                        /* Occupato — X */
                         <>
                           <line x1={x - 1} y1={y - 1} x2={x + 1} y2={y + 1}
                             stroke="white" strokeWidth="0.6" strokeLinecap="round" />
@@ -405,42 +424,22 @@ export default function PrenotaPage() {
                             stroke="white" strokeWidth="0.6" strokeLinecap="round" />
                         </>
                       ) : (
-                        /* Bloccato — orologio */
                         <circle cx={x} cy={y} r="1"
                           fill="none" stroke="white" strokeWidth="0.4" />
                       )}
 
-                      {/* Codice ombrellone */}
-                      <text
-                        x={x}
-                        y={y + 4}
-                        textAnchor="middle"
-                        fontSize="1.6"
-                        fontWeight="bold"
-                        fill={c.stroke}
+                      <text x={x} y={y + 4} textAnchor="middle"
+                        fontSize="1.6" fontWeight="bold" fill={c.stroke}
                         fontFamily="sans-serif"
-                        style={{
-                          textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-                          paintOrder: 'stroke',
-                          stroke: 'rgba(0,0,0,0.6)',
-                          strokeWidth: '0.4px',
-                        }}
-                      >
+                        style={{ paintOrder: 'stroke', stroke: 'rgba(0,0,0,0.6)', strokeWidth: '0.4px' }}>
                         {layout.codice}
                       </text>
 
-                      {/* Anello pulsante per selezionato */}
                       {isSelezionato && (
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r="4"
-                          fill="none"
-                          stroke={c.stroke}
-                          strokeWidth="0.5"
+                        <circle cx={x} cy={y} r="4" fill="none"
+                          stroke={c.stroke} strokeWidth="0.5"
                           strokeDasharray="1.5,1"
-                          style={{ animation: 'spinEllipse 3s linear infinite' }}
-                        />
+                          style={{ animation: 'spinEllipse 3s linear infinite' }} />
                       )}
                     </g>
                   );
@@ -448,17 +447,12 @@ export default function PrenotaPage() {
               </svg>
 
               {/* Label zone */}
-              <div style={{ position: 'absolute', top: '8px', left: '8px' }}>
-                {['A', 'B', 'C', 'D'].map((zona, i) => (
+              <div style={{ position: 'absolute', top: '8px', left: '8px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                {['A', 'B', 'C', 'D'].map((zona) => (
                   <div key={zona} style={{
-                    display: 'inline-block',
-                    marginRight: '6px',
-                    padding: '2px 8px',
-                    borderRadius: '20px',
+                    padding: '2px 8px', borderRadius: '20px',
                     backgroundColor: 'rgba(0,0,0,0.6)',
-                    color: '#c9a84c',
-                    fontSize: '0.65rem',
-                    fontWeight: 700,
+                    color: '#c9a84c', fontSize: '0.65rem', fontWeight: 700,
                     backdropFilter: 'blur(4px)',
                     border: '1px solid rgba(201,168,76,0.3)',
                   }}>
@@ -470,22 +464,16 @@ export default function PrenotaPage() {
               {/* Tooltip */}
               {tooltip && (
                 <div style={{
-                  position: 'absolute',
-                  bottom: '12px',
-                  left: '50%',
+                  position: 'absolute', bottom: '12px', left: '50%',
                   transform: 'translateX(-50%)',
-                  backgroundColor: 'rgba(0,0,0,0.85)',
-                  color: '#c9a84c',
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
+                  backgroundColor: 'rgba(0,0,0,0.85)', color: '#c9a84c',
+                  padding: '6px 14px', borderRadius: '20px',
+                  fontSize: '0.75rem', fontWeight: 700,
                   border: '1px solid rgba(201,168,76,0.3)',
-                  backdropFilter: 'blur(8px)',
-                  whiteSpace: 'nowrap',
+                  backdropFilter: 'blur(8px)', whiteSpace: 'nowrap',
                   pointerEvents: 'none',
                 }}>
-                  {tooltip.codice} — €{tooltip.prezzo?.toFixed(2)}/giorno — {tooltip.stato}
+                  {tooltip.codice} — €{tooltip.prezzo?.toFixed(2)} — {tooltip.stato}
                 </div>
               )}
             </div>
@@ -500,6 +488,7 @@ export default function PrenotaPage() {
               style={{ backgroundColor: 'rgba(52,199,89,0.1)', borderBottom: '1px solid rgba(52,199,89,0.2)' }}>
               <p className="font-bold text-sm" style={{ color: '#34c759' }}>
                 ✅ {selezionati.length} ombrellone{selezionati.length > 1 ? 'i' : ''} selezionato{selezionati.length > 1 ? 'i' : ''}
+                {' '}— {FASCE.find(f => f.id === fascia)?.emoji} {FASCE.find(f => f.id === fascia)?.label}
               </p>
             </div>
 
@@ -509,35 +498,28 @@ export default function PrenotaPage() {
                 style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #2a2a2a' }}>
                 <div>
                   <p className="font-bold" style={{ color: '#e8e8e8' }}>
-                    ⛱️ Ombrellone {s.ombrellone.codice} — Zona {s.ombrellone.zona}
+                    ⛱️ {s.ombrellone.codice} — Zona {s.ombrellone.zona}
                   </p>
                   <p style={{ color: '#c9a84c', fontSize: '0.8rem', fontWeight: 600 }}>
                     €{calcolaPrezzoOmbrellone(s).toFixed(2)}
                     {s.lettini > 2 && (
                       <span style={{ color: '#888', fontSize: '0.72rem' }}>
-                        {' '}(+€{((s.lettini - 2) * PREZZO_LETTINO_EXTRA).toFixed(2)} lettino extra)
+                        {' '}(+€{((s.lettini - 2) * PREZZO_LETTINO_EXTRA).toFixed(2)} extra)
                       </span>
                     )}
                   </p>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <span style={{ color: '#666', fontSize: '0.75rem' }}>🛏️</span>
-                  <button
-                    onClick={() => cambiaLettini(s.ombrellone.id, -1)}
+                  <button onClick={() => cambiaLettini(s.ombrellone.id, -1)}
                     className="w-7 h-7 rounded-full flex items-center justify-center font-bold"
-                    style={{ backgroundColor: '#2a2a2a', color: '#888', fontSize: '1rem' }}>
-                    −
-                  </button>
+                    style={{ backgroundColor: '#2a2a2a', color: '#888', fontSize: '1rem' }}>−</button>
                   <span className="w-5 text-center font-black" style={{ color: '#e8e8e8' }}>
                     {s.lettini}
                   </span>
-                  <button
-                    onClick={() => cambiaLettini(s.ombrellone.id, 1)}
+                  <button onClick={() => cambiaLettini(s.ombrellone.id, 1)}
                     className="w-7 h-7 rounded-full flex items-center justify-center font-bold"
-                    style={{ backgroundColor: '#c9a84c', color: '#0a0a0a', fontSize: '1rem' }}>
-                    +
-                  </button>
+                    style={{ backgroundColor: '#c9a84c', color: '#0a0a0a', fontSize: '1rem' }}>+</button>
                   <button
                     onClick={() => setSelezionati(selezionati.filter((x) => x.ombrellone.id !== s.ombrellone.id))}
                     style={{ color: '#ef4444', fontSize: '1.1rem', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '4px' }}>
@@ -565,27 +547,19 @@ export default function PrenotaPage() {
             <label className="block text-sm font-bold mb-1.5" style={{ color: '#888' }}>
               Nome e cognome <span style={{ color: '#ef4444' }}>*</span>
             </label>
-            <input
-              type="text"
-              placeholder="Mario Rossi"
-              value={nome}
+            <input type="text" placeholder="Mario Rossi" value={nome}
               onChange={(e) => setNome(e.target.value)}
               className="w-full px-4 py-3 rounded-xl"
-              style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }}
-            />
+              style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }} />
           </div>
           <div>
             <label className="block text-sm font-bold mb-1.5" style={{ color: '#888' }}>
               Email <span style={{ color: '#555', fontSize: '0.75rem' }}>(per conferma)</span>
             </label>
-            <input
-              type="email"
-              placeholder="mario@esempio.it"
-              value={email}
+            <input type="email" placeholder="mario@esempio.it" value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 rounded-xl"
-              style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }}
-            />
+              style={{ backgroundColor: '#2a2a2a', border: '1px solid #333', color: '#e8e8e8' }} />
           </div>
         </div>
 
@@ -596,8 +570,7 @@ export default function PrenotaPage() {
           </div>
         )}
 
-        <button
-          onClick={handlePrenota}
+        <button onClick={handlePrenota}
           disabled={loading || selezionati.length === 0}
           className="w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2"
           style={{
@@ -613,7 +586,7 @@ export default function PrenotaPage() {
           ) : (
             <>🔒 {selezionati.length === 0
               ? 'Seleziona un ombrellone'
-              : `Prenota ${selezionati.length} ombrellone${selezionati.length > 1 ? 'i' : ''} — €${calcolaTotale().toFixed(2)}`
+              : `Prenota — €${calcolaTotale().toFixed(2)}`
             }</>
           )}
         </button>

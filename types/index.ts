@@ -42,6 +42,8 @@ export interface Ordine {
 
 export type StatoOmbrellone = 'disponibile' | 'occupato' | 'bloccato' | 'selezionato';
 
+export type FasciaOraria = 'mattina' | 'pomeriggio' | 'giornata';
+
 export interface Ombrellone {
   id: string;
   codice: string;
@@ -49,6 +51,9 @@ export interface Ombrellone {
   y: number;
   zona: string;
   prezzo: number;
+  prezzo_mattina: number;
+  prezzo_pomeriggio: number;
+  prezzo_giornata: number;
   attivo: boolean;
   stato?: StatoOmbrellone;
 }
@@ -59,6 +64,7 @@ export interface Prenotazione {
   id: string;
   ombrellone_id: string;
   data: string;
+  fascia: FasciaOraria;
   nome_cliente: string | null;
   email_cliente: string | null;
   stato: StatoPrenotazione;

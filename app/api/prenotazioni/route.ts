@@ -6,7 +6,7 @@ const BLOCCO_DURATA_MINUTI = 10;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { ombrellone_id, data, nome_cliente, email_cliente } = body;
+    const { ombrellone_id, data, nome_cliente, email_cliente, lettini, totale, fascia = 'giornata' } = body;
 
     if (!ombrellone_id || !data) {
       return NextResponse.json(
@@ -18,12 +18,24 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseAdmin();
     const now = new Date();
 
+    // Fasce sovrapposte per controllo conflitti
+    let fasceSovrapposte: string[] = [];
+    if (fascia === 'mattina') {
+      fasceSovrapposte = ['mattina', 'giornata'];
+    } else if (fascia === 'pomeriggio') {
+      fasceSovrapposte = ['pomeriggio', 'giornata'];
+    } else {
+      fasceSovrapposte = ['mattina', 'pomeriggio', 'giornata'];
+    }
+
+    // Controlla disponibilità
     const { data: esistenti, error: errCheck } = await supabase
       .from('prenotazioni')
-      .select('id, stato, blocco_scade_il')
+      .select('id, stato, blocco_scade_il, fascia')
       .eq('ombrellone_id', ombrellone_id)
       .eq('data', data)
-      .in('stato', ['prenotato', 'bloccato']);
+      .in('stato', ['prenotato', 'bloccato'])
+      .in('fascia', fasceSovrapposte);
 
     if (errCheck) {
       return NextResponse.json({ message: 'Errore database' }, { status: 500 });
@@ -40,11 +52,12 @@ export async function POST(req: NextRequest) {
 
     if (conflitto) {
       return NextResponse.json(
-        { message: 'Ombrellone non disponibile per questa data' },
+        { message: 'Ombrellone non disponibile per questa fascia oraria' },
         { status: 409 }
       );
     }
 
+    // Pulisci blocchi scaduti
     await supabase
       .from('prenotazioni')
       .update({ stato: 'cancellato' })
@@ -53,11 +66,18 @@ export async function POST(req: NextRequest) {
       .eq('stato', 'bloccato')
       .lt('blocco_scade_il', now.toISOString());
 
+    // Calcola prezzo in base alla fascia
     const { data: ombrellone } = await supabase
       .from('ombrelloni')
-      .select('prezzo')
+      .select('prezzo_mattina, prezzo_pomeriggio, prezzo_giornata')
       .eq('id', ombrellone_id)
       .single();
+
+    const prezzoFascia = fascia === 'mattina'
+      ? ombrellone?.prezzo_mattina
+      : fascia === 'pomeriggio'
+      ? ombrellone?.prezzo_pomeriggio
+      : ombrellone?.prezzo_giornata;
 
     const scadenzaBlocco = new Date(now.getTime() + BLOCCO_DURATA_MINUTI * 60 * 1000);
 
@@ -69,22 +89,32 @@ export async function POST(req: NextRequest) {
         nome_cliente: nome_cliente || null,
         email_cliente: email_cliente || null,
         stato: 'bloccato',
+        fascia,
         blocco_scade_il: scadenzaBlocco.toISOString(),
-        totale: ombrellone?.prezzo ?? 0,
+        totale: totale || prezzoFascia || 0,
+        lettini: lettini || 2,
       })
       .select('id')
       .single();
 
     if (errInsert) {
+      console.error('Errore inserimento prenotazione:', errInsert);
       return NextResponse.json(
         { message: 'Errore durante la prenotazione' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ prenotazione_id: prenotazione.id }, { status: 201 });
+    return NextResponse.json(
+      { prenotazione_id: prenotazione.id },
+      { status: 201 }
+    );
 
   } catch (err) {
-    return NextResponse.json({ message: 'Errore interno' }, { status: 500 });
+    console.error('Errore API prenotazioni:', err);
+    return NextResponse.json(
+      { message: 'Errore interno del server' },
+      { status: 500 }
+    );
   }
 }
