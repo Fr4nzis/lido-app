@@ -11,7 +11,7 @@ export default function LoadingScreen() {
   useEffect(() => {
     const t1 = setTimeout(() => setFase('visibile'), 100);
     const t2 = setTimeout(() => setFase('uscita'), 2600);
-    const t3 = setTimeout(() => setFase('finito'), 3800);
+    const t3 = setTimeout(() => setFase('finito'), 4000);
 
     return () => {
       clearTimeout(t1);
@@ -24,7 +24,7 @@ export default function LoadingScreen() {
 
   return (
     <div className="wrapper">
-      
+
       {/* ONDA */}
       <div
         className="waveContainer"
@@ -37,22 +37,16 @@ export default function LoadingScreen() {
               : '-20vh',
         }}
       >
-        {/* SFONDO */}
         <div className="gradient" />
 
-        {/* ONDA ANIMATA */}
-        <svg
-          className="waveSvg"
-          viewBox="0 0 1440 200"
-          preserveAspectRatio="none"
-        >
+        <svg className="waveSvg" viewBox="0 0 1440 200" preserveAspectRatio="none">
           <path
             className="wavePath"
             d="M0,100 C240,140 480,60 720,100 C960,140 1200,60 1440,100 L1440,0 L0,0 Z"
           />
         </svg>
 
-        {/* BOLLE */}
+        {/* Bolle */}
         {[...Array(8)].map((_, i) => (
           <div
             key={i}
@@ -69,30 +63,36 @@ export default function LoadingScreen() {
         ))}
       </div>
 
-      {/* CONTENUTO CENTRALE (SEPARATO → NON SI MUOVE) */}
-      <div
-        className={`centerContent ${
-          fase === 'visibile' ? 'visible' : ''
-        }`}
-      >
-        <div className="logoFloat">
-          <Image
-            src="/Logo_del_Lido_Arcobaleno.png"
-            alt="Lido Arcobaleno Gate 1"
-            width={230}
-            height={230}
-            priority
-          />
+      {/* CONTENUTO CENTRALE */}
+      <div className={`centerContent ${fase === 'visibile' ? 'visible' : ''}`}>
+
+        {/* LOGO EMERSIONE */}
+        <div className="logoWrapper">
+          <div className="logoFloat logoReveal">
+            <Image
+              src="/Logo_del_Lido_Arcobaleno.png"
+              alt="Lido Arcobaleno Gate 1"
+              width={230}
+              height={230}
+              priority
+            />
+          </div>
+
+          {/* MASCHERA ACQUA */}
+          <div className="waveMask" />
         </div>
 
+        {/* LINEA */}
         <div className="goldLine" />
 
+        {/* DOTS */}
         <div className="dots">
           {[0, 1, 2, 3, 4].map((i) => (
             <div key={i} className="dot" style={{ animationDelay: `${i * 0.12}s` }} />
           ))}
         </div>
 
+        {/* TESTO */}
         <p className="welcomeText">Benvenuto</p>
       </div>
 
@@ -138,30 +138,65 @@ export default function LoadingScreen() {
           animation: waveMove 6s ease-in-out infinite;
         }
 
-        /* CENTRO PERFETTO */
+        /* CENTRO */
         .centerContent {
           position: fixed;
           top: 50%;
           left: 50%;
-          transform: translate(-50%, -50%) scale(0.95);
+          transform: translate(-50%, -50%);
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 20px;
           opacity: 0;
-          transition: all 0.8s ease;
           z-index: 10;
         }
 
         .centerContent.visible {
-          opacity: 1;
-          transform: translate(-50%, -50%) scale(1);
+          animation: fadeCenter 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
 
-        /* LOGO */
+        /* LOGO WRAPPER */
+        .logoWrapper {
+          position: relative;
+          width: 230px;
+          height: 230px;
+          overflow: hidden;
+        }
+
+        .logoReveal {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transform: translateY(50px);
+          opacity: 0;
+          z-index: 1;
+        }
+
+        .centerContent.visible .logoReveal {
+          animation: logoRise 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
         .logoFloat {
           animation: floatLogo 3.5s ease-in-out infinite;
           filter: drop-shadow(0 0 25px rgba(201,168,76,0.3));
+        }
+
+        /* MASCHERA */
+        .waveMask {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            180deg,
+            #001220 0%,
+            #003d5c 40%,
+            #006994 70%,
+            #00b4e6 100%
+          );
+          z-index: 2;
+          animation: waterReveal 1.4s ease forwards;
         }
 
         /* LINEA */
@@ -212,6 +247,40 @@ export default function LoadingScreen() {
         }
 
         /* ANIMAZIONI */
+
+        @keyframes fadeCenter {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.92);
+          }
+          100% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+          }
+        }
+
+        @keyframes logoRise {
+          0% {
+            transform: translateY(60px);
+            opacity: 0;
+          }
+          60% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes waterReveal {
+          0% {
+            transform: translateY(0%);
+          }
+          100% {
+            transform: translateY(-110%);
+          }
+        }
 
         @keyframes waveMove {
           0% {
