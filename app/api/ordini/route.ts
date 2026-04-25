@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         prodotti,
         totale: totaleCalcolato,
         modalita: modalita || 'lettino',
-        stato: 'in_preparazione',
+        stato: 'in_attesa',
         note: note || null,
       })
       .select('id')
