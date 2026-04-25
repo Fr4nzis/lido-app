@@ -133,16 +133,43 @@ function getTheme() {
   }
 }
 
+function getFasceDisponibili(dataSelezionata: string): FasciaOraria[] {
+  const ora = new Date().getHours();
+  const oggi = new Date().toISOString().split('T')[0];
+  const isOggi = dataSelezionata === oggi;
+
+  // Se non è oggi, tutte le fasce disponibili
+  if (!isOggi) return ['mattina', 'pomeriggio', 'giornata'];
+
+  // Logica per oggi in base all'orario
+  if (ora < 8) {
+    // Prima dell'apertura — nessuna fascia disponibile oggi
+    return [];
+  } else if (ora >= 8 && ora < 14) {
+    // Mattina — tutte disponibili
+    return ['mattina', 'pomeriggio', 'giornata'];
+  } else if (ora >= 14 && ora < 20) {
+    // Pomeriggio — solo pomeriggio
+    return ['pomeriggio'];
+  } else {
+    // Dopo chiusura — nessuna fascia
+    return [];
+  }
+}
 export default function PrenotaPage() {
   const [data, setData] = useState(() => {
   const ora = new Date();
-  // Se siamo dopo le 20:00, il lido è chiuso — mostra domani
-  if (ora.getHours() >= 20) {
+  // Se siamo fuori orario lido, vai a domani
+  if (ora.getHours() >= 20 || ora.getHours() < 8) {
     ora.setDate(ora.getDate() + 1);
   }
   return ora.toISOString().split('T')[0];
 });
-  const [fascia, setFascia] = useState<FasciaOraria>('giornata');
+  const [fascia, setFascia] = useState<FasciaOraria>(() => {
+  const ora = new Date().getHours();
+  if (ora >= 14 && ora < 20) return 'pomeriggio';
+  return 'giornata';
+});
   const [ombrelloniDB, setOmbrelloniDB] = useState<Ombrellone[]>([]);
   const [selezionati, setSelezionati] = useState<OmbrelloneSelezionato[]>([]);
   const [loading, setLoading] = useState(false);
@@ -152,6 +179,13 @@ export default function PrenotaPage() {
   const [errore, setErrore] = useState('');
   const [tooltip, setTooltip] = useState<{ codice: string; prezzo: number; stato: string } | null>(null);
   const theme = getTheme();
+
+  useEffect(() => {
+  const fasceDisponibili = getFasceDisponibili(data);
+  if (fasceDisponibili.length > 0 && !fasceDisponibili.includes(fascia)) {
+    setFascia(fasceDisponibili[0]);
+  }
+}, [data]);
 
   useEffect(() => {
     if (!data) return;
@@ -316,33 +350,67 @@ export default function PrenotaPage() {
         </div>
 
         {/* Fascia oraria */}
-        <div className="rounded-2xl p-4"
-          style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
-          <label className="block text-sm font-bold mb-3" style={{ color: '#c9a84c' }}>
-            🕐 Seleziona la fascia oraria
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {FASCE.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setFascia(f.id)}
-                className="p-3 rounded-xl flex flex-col items-center gap-1 transition-all"
-                style={{
-                  border: fascia === f.id ? `2px solid ${theme.accent}` : '2px solid #2a2a2a',
-                  backgroundColor: fascia === f.id ? `rgba(201,168,76,0.1)` : '#2a2a2a',
-                }}>
-                <span className="text-xl">{f.emoji}</span>
-                <span className="text-xs font-bold"
-                  style={{ color: fascia === f.id ? '#c9a84c' : '#666' }}>
-                  {f.label}
-                </span>
-                <span style={{ fontSize: '0.6rem', color: fascia === f.id ? '#c9a84c' : '#444' }}>
-                  {f.orario}
-                </span>
-              </button>
-            ))}
-          </div>
+<div className="rounded-2xl p-4"
+  style={{ backgroundColor: '#1a1a1a', border: '1px solid #2a2a2a' }}>
+  <label className="block text-sm font-bold mb-3" style={{ color: '#c9a84c' }}>
+    🕐 Seleziona la fascia oraria
+  </label>
+
+  {(() => {
+    const fasceDisponibili = getFasceDisponibili(data);
+    const oggi = new Date().toISOString().split('T')[0];
+    const isOggi = data === oggi;
+
+    if (isOggi && fasceDisponibili.length === 0) {
+      return (
+        <div className="p-3 rounded-xl text-center text-sm"
+          style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>
+          ⚠️ Il lido è chiuso per oggi. Seleziona una data futura.
         </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-3 gap-2">
+        {FASCE.map((f) => {
+          const disponibile = fasceDisponibili.includes(f.id);
+          const isAttiva = fascia === f.id;
+
+          return (
+            <button
+              key={f.id}
+              onClick={() => disponibile && setFascia(f.id)}
+              className="p-3 rounded-xl flex flex-col items-center gap-1 transition-all"
+              style={{
+                border: isAttiva
+                  ? `2px solid ${theme.accent}`
+                  : '2px solid #2a2a2a',
+                backgroundColor: isAttiva
+                  ? 'rgba(201,168,76,0.1)'
+                  : '#2a2a2a',
+                opacity: disponibile ? 1 : 0.35,
+                cursor: disponibile ? 'pointer' : 'not-allowed',
+              }}>
+              <span className="text-xl">{f.emoji}</span>
+              <span className="text-xs font-bold"
+                style={{ color: isAttiva ? '#c9a84c' : disponibile ? '#888' : '#444' }}>
+                {f.label}
+              </span>
+              <span style={{ fontSize: '0.6rem', color: isAttiva ? '#c9a84c' : '#444' }}>
+                {f.orario}
+              </span>
+              {!disponibile && isOggi && (
+                <span style={{ fontSize: '0.55rem', color: '#ef4444' }}>
+                  Non disponibile
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    );
+  })()}
+</div>
 
         {/* Legenda */}
         <div className="flex gap-3 flex-wrap px-1">
