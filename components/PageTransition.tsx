@@ -50,7 +50,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
   const currentXRef = useRef(0); // posizione corrente pannello current
   const isDraggingRef = useRef(false);
 
-  const W = () => containerRef.current?.offsetWidth || window.innerWidth;
+  const W = () => containerRef.current?.offsetWidth || (typeof window !== 'undefined' ? window.innerWidth : 390);
 
   // Aggiorna pannelli con transform diretto
   const setPanelX = (currentX: number, dir: 'left' | 'right') => {
