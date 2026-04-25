@@ -5,7 +5,6 @@ import BottomNav from '@/components/BottomNav';
 import CartButton from '@/components/CartButton';
 import StaffButton from '@/components/StaffButton';
 import LoadingScreen from '@/components/LoadingScreen';
-import PageTransition from '@/components/PageTransition';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -35,9 +34,7 @@ export default function RootLayout({
         <LoadingScreen />
         <StaffButton />
         <main className="min-h-screen pb-20">
-          <PageTransition>
-            {children}
-          </PageTransition>
+          {children}
         </main>
         <CartButton />
         <BottomNav />
